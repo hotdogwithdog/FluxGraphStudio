@@ -7,6 +7,12 @@
 *.o
 *.obj
 
+# Visual Studio cache directory
+.vs/
+
+# Rider
+.idea/
+
 # Precompiled Headers
 *.gch
 *.pch
