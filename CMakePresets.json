@@ -1,0 +1,38 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "default",
+      "displayName": "Default",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "SDL_DIRECTX": "OFF",
+	"SDL_DUMMYCAMERA": "OFF",
+	"SDL_DUMMYAUDIO": "OFF",
+	"SDL_DUMMYVIDEO": "OFF",
+	"SDL_GPU_OPENXR": "OFF",
+	"SDL_HIDAPI": "OFF",
+	"SDL_HIDAPI_JOYSTICK": "OFF",
+	"SDL_OFFSCREEN": "OFF",
+        "SDL_OPENGL": "OFF",
+        "SDL_OPENGLES": "OFF",
+        "SDL_RENDER_D3D": "OFF",
+        "SDL_RENDER_D3D11": "OFF",
+        "SDL_RENDER_D3D12": "OFF",
+	"SDL_RENDER_GPU": "OFF",
+        "SDL_RENDER_METAL": "OFF",
+
+
+        "SDL_VULKAN": "ON",
+
+
+	"SDL_VIRTUAL_JOYSTICK": "OFF",
+	"SDL_XINPUT": "OFF"
+      }
+    }  ]
+}
