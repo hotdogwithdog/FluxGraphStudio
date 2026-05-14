@@ -25,7 +25,8 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 # SOURCE
 # =========================
 file(GLOB_RECURSE FGS_SRC CONFIGURE_DEPENDS
-    ${CMAKE_SOURCE_DIR}/src/*.cpp
+    ${CMAKE_SOURCE_DIR}/Src/*.cpp
+    ${CMAKE_SOURCE_DIR}/Src/*.h
 )
 
 add_executable(FGS ${FGS_SRC})
