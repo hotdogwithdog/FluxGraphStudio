@@ -1,8 +1,16 @@
 #include <iostream>
 
+#include "Core/FGSEngine.h"
+
 int main()
 {
-    std::cout << "FGS Started\n";
+    FGSEngine app;
+    
+    app.Init();
+    
+    app.Run();
+    
+    app.CleanUp();
 
     return 0;
 }

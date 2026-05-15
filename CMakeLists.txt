@@ -31,6 +31,8 @@ file(GLOB_RECURSE FGS_SRC CONFIGURE_DEPENDS
 
 add_executable(FGS ${FGS_SRC})
 
+target_include_directories(FGS PRIVATE ${CMAKE_SOURCE_DIR}/Src)
+
 # =========================
 # THIRD PARTY
 # =========================
