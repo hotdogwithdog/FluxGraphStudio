@@ -5,9 +5,12 @@
 #include "GPU/VulkanContext.h"
 #include "GPU/VulkanQueue.h"
 #include "Window.h"
+#include "GPU/FrameData.h"
 #include "GPU/VulkanSwapchain.h"
 #include "GPU/VulkanImage.h"
 
+
+constexpr unsigned int FRAME_OVERLAP = 2;
 
 class FGSEngine
 {
@@ -28,6 +31,12 @@ private:
     VulkanQueue _immediateQueue;
 
     VulkanSwapchain _swapchain;
+
+    FrameData _frames[FRAME_OVERLAP];
+
+    VkCommandPool _immediateCommandPool;
+    VkCommandBuffer _immediateCommandBuffer;
+    VkFence _immediateFence;
 
     // The Draw Image is the image that fills the window so later on surely it will be a sourceImage and previewImage but this is a composition of that 2 and the editor UI
     // later on this image is copied to the swapchain image to be presented to the screen
@@ -51,6 +60,7 @@ private:
     void InitVulkan();
     void InitSwapChain();
     void InitCommands();
+    void InitSyncStructures();
     void InitUI();
 
     void CreateSwapChain(uint32_t width, uint32_t height);

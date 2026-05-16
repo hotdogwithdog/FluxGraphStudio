@@ -30,6 +30,10 @@ void FGSEngine::Init()
     InitSwapChain();
 
     InitCommands();
+
+    InitSyncStructures();
+
+    
     
 
     _bIsInitialized = true;
@@ -187,7 +191,65 @@ void FGSEngine::InitSwapChain()
 
 void FGSEngine::InitCommands()
 {
+    // Swapchain commands
+    {
+       VkCommandPoolCreateInfo commandPoolInfo =  VkHelpers::CommandPoolCreateInfo(_mainQueue.familyIndex, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+
+        for (int i = 0; i < FRAME_OVERLAP; ++i)
+        {
+            VK_CHECK(vkCreateCommandPool(_vulkanContext.device, &commandPoolInfo, nullptr, &_frames[i].commandPool));
+
+            VkCommandBufferAllocateInfo cmdAllocInfo = VkHelpers::CommandBufferAllocateInfo(_frames[i].commandPool, 1);
+
+            VK_CHECK(vkAllocateCommandBuffers(_vulkanContext.device, &cmdAllocInfo, &_frames[i].commandBuffer));
+        }
+    }
+
+    // Immediate submits commands
+    {
+        VkCommandPoolCreateInfo commandPoolInfo =  VkHelpers::CommandPoolCreateInfo(_immediateQueue.familyIndex, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+
+        VK_CHECK(vkCreateCommandPool(_vulkanContext.device, &commandPoolInfo, nullptr, &_immediateCommandPool));
+
+        VkCommandBufferAllocateInfo cmdAllocInfo = VkHelpers::CommandBufferAllocateInfo(_immediateCommandPool, 1);
+
+        VK_CHECK(vkAllocateCommandBuffers(_vulkanContext.device, &cmdAllocInfo, &_immediateCommandBuffer));
+
+        _mainDeletionStack.Push([this]()
+        {
+            vkDestroyCommandPool(_vulkanContext.device, _immediateCommandPool, nullptr);
+        });
+    }
     
+}
+
+void FGSEngine::InitSyncStructures()
+{
+    // Swapchain
+    VkFenceCreateInfo fenceCreateInfo = VkHelpers::FenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+    VkSemaphoreCreateInfo semaphoreCreateInfo = VkHelpers::SemaphoreCreateInfo();
+
+    for (int i = 0; i < FRAME_OVERLAP; ++i)
+    {
+        VK_CHECK(vkCreateFence(_vulkanContext.device, &fenceCreateInfo, nullptr, &_frames[i].renderFence));
+
+        VK_CHECK(vkCreateSemaphore(_vulkanContext.device, &semaphoreCreateInfo, nullptr, &_frames[i].acquireSemaphore));
+    }
+
+    _swapchain.swapchainSubmitSemaphores.clear();
+    _swapchain.swapchainSubmitSemaphores.reserve(_swapchain.swapchainImages.size());
+    for (int i = 0; i < _swapchain.swapchainImages.size(); ++i)
+    {
+        _swapchain.swapchainSubmitSemaphores.push_back(VkSemaphore());
+        VK_CHECK(vkCreateSemaphore(_vulkanContext.device, &semaphoreCreateInfo, nullptr, &_swapchain.swapchainSubmitSemaphores[i]));
+    }
+
+    // Immediate submit
+    VK_CHECK(vkCreateFence(_vulkanContext.device, &fenceCreateInfo, nullptr, &_immediateFence));
+    _mainDeletionStack.Push([this]()
+    {
+        vkDestroyFence(_vulkanContext.device, _immediateFence, nullptr);
+    });
 }
 
 void FGSEngine::InitUI()

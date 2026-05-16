@@ -8,7 +8,8 @@
 
 namespace Logger
 {
-    int messagesCount = 0;
+    int endMessagesIndex = 0;
+    int startMessageIndex = 0;
     std::array<LogMessage, LOG_MESSAGE_MAX> messages;
 }
 
@@ -33,5 +34,7 @@ void Logger::Log(const LogLevel& level, const std::string& message)
 
     std::cout << headerLog.str() << message << std::endl;
 
-    messages[messagesCount] = LogMessage(level, message);
+    messages[endMessagesIndex] = LogMessage(level, message);
+    endMessagesIndex = (endMessagesIndex + 1) % LOG_MESSAGE_MAX;
+    if (startMessageIndex == endMessagesIndex) startMessageIndex = (startMessageIndex + 1) % LOG_MESSAGE_MAX;
 }
