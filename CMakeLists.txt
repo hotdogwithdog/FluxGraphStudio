@@ -9,7 +9,7 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
 # =========================
 # VULKAN
 # =========================
-find_package(Vulkan REQUIRED COMPONENTS shaderc_combined)
+find_package(Vulkan REQUIRED)
 
 
 # =========================
@@ -49,7 +49,7 @@ add_subdirectory(ThirdParty)
 
 target_link_libraries(FGS PRIVATE
 	Vulkan::Vulkan
-	Vulkan::shaderc_combined
+	shaderc_combined
 	SDL3::SDL3
 	glm
 	vk-bootstrap

@@ -4,9 +4,9 @@
 [submodule "ThirdParty/SDL"]
 	path = ThirdParty/SDL
 	url = https://github.com/libsdl-org/SDL.git
-[submodule "Thirdparty/vk-bootstrap"]
-	path = Thirdparty/vk-bootstrap
-	url = https://github.com/charles-lunarg/vk-bootstrap.git
 [submodule "ThirdParty/imgui"]
 	path = ThirdParty/imgui
 	url = https://github.com/ocornut/imgui.git
+[submodule "ThirdParty/shaderc"]
+	path = ThirdParty/shaderc
+	url = https://github.com/google/shaderc.git
