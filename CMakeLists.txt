@@ -3,12 +3,13 @@ cmake_minimum_required(VERSION 3.25)
 project(FGS)
 
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
 
 
 # =========================
 # VULKAN
 # =========================
-find_package(Vulkan REQUIRED)
+find_package(Vulkan REQUIRED COMPONENTS shaderc_combined)
 
 
 # =========================
@@ -29,7 +30,14 @@ file(GLOB_RECURSE FGS_SRC CONFIGURE_DEPENDS
     ${CMAKE_SOURCE_DIR}/Src/*.h
 )
 
-add_executable(FGS ${FGS_SRC})
+file(GLOB_RECURSE FGS_SHADERS CONFIGURE_DEPENDS
+    ${CMAKE_SOURCE_DIR}/Assets/Shaders/*.comp
+    ${CMAKE_SOURCE_DIR}/Assets/Shaders/*.frag
+    ${CMAKE_SOURCE_DIR}/Assets/Shaders/*.vert
+    ${CMAKE_SOURCE_DIR}/Assets/Shaders/*.glsl
+)
+
+add_executable(FGS ${FGS_SRC} ${FGS_SHADERS})
 
 target_include_directories(FGS PRIVATE ${CMAKE_SOURCE_DIR}/Src)
 
@@ -41,6 +49,7 @@ add_subdirectory(ThirdParty)
 
 target_link_libraries(FGS PRIVATE
 	Vulkan::Vulkan
+	Vulkan::shaderc_combined
 	SDL3::SDL3
 	glm
 	vk-bootstrap

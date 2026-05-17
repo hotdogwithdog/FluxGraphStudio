@@ -6,6 +6,7 @@
 #include "GPU/VulkanQueue.h"
 #include "Window.h"
 #include "GPU/FrameData.h"
+#include "GPU/VulkanDescriptors.h"
 #include "GPU/VulkanSwapchain.h"
 #include "GPU/VulkanImage.h"
 
@@ -41,6 +42,9 @@ private:
     // The Draw Image is the image that fills the window so later on surely it will be a sourceImage and previewImage but this is a composition of that 2 and the editor UI
     // later on this image is copied to the swapchain image to be presented to the screen
     VulkanImage _drawImage;
+    Descriptors::DescriptorAllocator _drawImageAllocator;
+    VkDescriptorSet _drawImageDescriptorSet;
+    VkDescriptorSetLayout _drawImageDescriptorSetLayout;
 
     VmaAllocator _allocator;
     DeletionStack _mainDeletionStack;
@@ -61,6 +65,8 @@ private:
     void InitSwapChain();
     void InitCommands();
     void InitSyncStructures();
+    void InitDescriptors(); // TODO: This will change a lot at least the implementation when the cache and gNode logic is added, right now just a simple binding 0 of a image nothing more
+    void InitPipelines();
     void InitUI();
 
     void CreateSwapChain(uint32_t width, uint32_t height);

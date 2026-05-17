@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include <array>
+#include <format>
 #include <string>
 
 namespace Logger
@@ -26,8 +27,7 @@ namespace Logger
             
         LogMessage(const LogLevel& level, const std::string& message) : level(level), message(message) { }
     };
-
-    void Log(const LogLevel& level, const std::string& message);
     
+    void Log(const LogLevel& level, const std::string& message);
 }
 

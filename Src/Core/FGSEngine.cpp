@@ -10,6 +10,8 @@
 #include "SDL3/SDL_init.h"
 #include "SDL3/SDL_vulkan.h"
 #include "VkBootstrap.h"
+#include "GPU/VulkanDescriptors.h"
+#include "ShaderCompiler/ShaderCompiler.h"
 
 
 FGSEngine* loadedEngine = nullptr;
@@ -33,6 +35,9 @@ void FGSEngine::Init()
 
     InitSyncStructures();
 
+    InitDescriptors();
+
+    InitPipelines();
     
     
 
@@ -250,6 +255,49 @@ void FGSEngine::InitSyncStructures()
     {
         vkDestroyFence(_vulkanContext.device, _immediateFence, nullptr);
     });
+}
+
+void FGSEngine::InitDescriptors()
+{
+    std::vector<Descriptors::PoolSizeRatio> sizes =
+        {
+            { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1 }
+        };
+
+    _drawImageAllocator.InitPool(_vulkanContext.device, 10, sizes);
+
+    // Init the Draw DescriptorSet
+    {
+        Descriptors::DescriptorLayoutBuilder builder;
+        builder.AddBinding(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+        _drawImageDescriptorSetLayout = builder.Build(_vulkanContext.device);
+    }
+
+    _drawImageDescriptorSet = _drawImageAllocator.Allocate(_vulkanContext.device, _drawImageDescriptorSetLayout);
+
+    // Write the draw image into the set
+    {
+        Descriptors::DescriptorWriter writer;
+        writer.WriteImage(0, _drawImage.imageView, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+
+        writer.UpdateSet(_vulkanContext.device, _drawImageDescriptorSet);
+    }
+
+    _mainDeletionStack.Push([this]()
+    {
+        _drawImageAllocator.DestroyPool(_vulkanContext.device); // destroy the pool so all his descriptor sets are also destroyed
+
+        vkDestroyDescriptorSetLayout(_vulkanContext.device, _drawImageDescriptorSetLayout, nullptr);
+    });
+}
+
+void FGSEngine::InitPipelines()
+{
+    // TODO: Test for see the shaders compilation
+
+    std::vector<uint32_t> spirVShaderData = ShaderCompiler::CompileGlslFile("SimpleImageRender.comp");
+
+    //Logger::Log(Logger::LogLevel::Debug, std::format("Shader size: {}; Shader bytes: ", spirVShaderData.size(), spirVShaderData.data()));
 }
 
 void FGSEngine::InitUI()
