@@ -10,6 +10,7 @@
 #include "SDL3/SDL_init.h"
 #include "SDL3/SDL_vulkan.h"
 #include "VkBootstrap.h"
+#include "Assets/TextureLoader.h"
 #include "GPU/VulkanDescriptors.h"
 #include "ShaderCompiler/ShaderCompiler.h"
 
@@ -34,6 +35,10 @@ void FGSEngine::Init()
     InitCommands();
 
     InitSyncStructures();
+
+    InitDefaultSamplers();
+
+    InitTestImage();
 
     InitDescriptors();
 
@@ -79,7 +84,10 @@ void FGSEngine::Run()
         }
 
         // TODO: Resize
-
+        if (_window.bResizeRequested)
+        {
+            ResizeSwapchain();
+        }
         // TODO: EDITOR UI
 
         Draw();
@@ -337,7 +345,9 @@ void FGSEngine::InitDescriptors()
 {
     std::vector<Descriptors::PoolSizeRatio> sizes =
         {
-            { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1 }
+            { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1 },
+            { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 },
+            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1 }
         };
 
     _drawImageAllocator.InitPool(_vulkanContext.device, 10, sizes);
@@ -346,6 +356,7 @@ void FGSEngine::InitDescriptors()
     {
         Descriptors::DescriptorLayoutBuilder builder;
         builder.AddBinding(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+        builder.AddBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
         _drawImageDescriptorSetLayout = builder.Build(_vulkanContext.device);
     }
 
@@ -355,7 +366,8 @@ void FGSEngine::InitDescriptors()
     {
         Descriptors::DescriptorWriter writer;
         writer.WriteImage(0, _drawImage.imageView, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
-
+        writer.WriteImage(1, _testImage.imageView, _defaultSamplerLinear, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        
         writer.UpdateSet(_vulkanContext.device, _drawImageDescriptorSet);
     }
 
@@ -371,11 +383,11 @@ void FGSEngine::InitPipelines()
 {
     // TODO: Test for see the shaders compilation
 
-    ShaderCompiler::ShaderCompilationResult compilationResult = ShaderCompiler::CompileGlslFileIntoSpirV("gradient.comp");
+    ShaderCompiler::ShaderCompilationResult compilationResult = ShaderCompiler::CompileGlslFileIntoSpirV("sampleImage.comp");
 
     if (!compilationResult.bSuccess)
     {
-        Logger::Log(Logger::LogLevel::Error, "Failed to compile gradient.comp, Not continue with pipeline creation");
+        Logger::Log(Logger::LogLevel::Error, "Failed to compile sampleImage.comp, Not continue with pipeline creation");
         return;
     }
     
@@ -391,7 +403,7 @@ void FGSEngine::InitPipelines()
     VkShaderModule gradientShaderModule;
     if (!VkHelpers::LoadShaderModule(_vulkanContext.device, compilationResult.spirV, &gradientShaderModule))
     {
-        Logger::Log(Logger::LogLevel::Warning, "Failed to load gradient shader module");
+        Logger::Log(Logger::LogLevel::Warning, "Failed to load sampleImage shader module");
     }
 
     VkPipelineShaderStageCreateInfo stageInfo {};
@@ -418,12 +430,176 @@ void FGSEngine::InitPipelines()
     });
 }
 
+void FGSEngine::InitDefaultSamplers()
+{
+    VkSamplerCreateInfo samplerInfo = { .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+    samplerInfo.magFilter = VK_FILTER_NEAREST;
+    samplerInfo.minFilter = VK_FILTER_NEAREST;
+
+    VK_CHECK(vkCreateSampler(_vulkanContext.device, &samplerInfo, nullptr, &_defaultSamplerNearest));
+
+    samplerInfo.magFilter = VK_FILTER_LINEAR;
+    samplerInfo.minFilter = VK_FILTER_LINEAR;
+
+    VK_CHECK(vkCreateSampler(_vulkanContext.device, &samplerInfo, nullptr, &_defaultSamplerLinear));
+
+    _mainDeletionStack.Push([this]()
+    {
+        vkDestroySampler(_vulkanContext.device, _defaultSamplerNearest, nullptr);
+        vkDestroySampler(_vulkanContext.device, _defaultSamplerLinear, nullptr);
+    });
+}
+
+void FGSEngine::InitTestImage()
+{
+    TextureLoader::TextureResult result;
+    
+    if (!TextureLoader::ReadTextureFromFile("defaultTexture.png", &result))
+    {
+        Logger::Log(Logger::LogLevel::Error, "Failed to load texture from file: defaultTexture.png");
+        TextureLoader::FreeTextureResult(&result);
+        return;
+    }
+
+    _testImage = CreateAndFillImage(&result, VK_IMAGE_USAGE_SAMPLED_BIT);
+    TextureLoader::FreeTextureResult(&result);
+}
+
 void FGSEngine::InitUI()
 {
     
 }
 
-void FGSEngine::CreateSwapChain(uint32_t width, uint32_t height)
+void FGSEngine::DestroySwapchain()
 {
+    // This call also destroy the swapchain images because they are internal to it
+    vkDestroySwapchainKHR(_vulkanContext.device, _swapchain.swapChain, nullptr);
+
+    for (size_t i = 0; i < _swapchain.swapchainImageViews.size(); ++i)
+    {
+        vkDestroyImageView(_vulkanContext.device, _swapchain.swapchainImageViews[i], nullptr);
+    }
+}
+
+void FGSEngine::ResizeSwapchain()
+{
+    vkDeviceWaitIdle(_vulkanContext.device);
+
+    DestroySwapchain();
+
+    int w, h;
+    SDL_GetWindowSize(_window.window, &w, &h);
+    _window.windowExtent.width = w;
+    _window.windowExtent.height = h;
+
+    _swapchain.Create(_vulkanContext, _window.windowExtent.width, _window.windowExtent.height);
+
+    _window.bResizeRequested = false;
+}
+
+void FGSEngine::ImmediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function)
+{
+    VK_CHECK(vkResetFences(_vulkanContext.device, 1, &_immediateFence));
+    VK_CHECK(vkResetCommandBuffer(_immediateCommandBuffer, 0));
+
+    VkCommandBuffer cmd = _immediateCommandBuffer;
+
+    VkCommandBufferBeginInfo cmdBeginInfo = VkHelpers::CommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+    VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
+
+    function(cmd);
+
+    VK_CHECK(vkEndCommandBuffer(cmd));
+
+    VkCommandBufferSubmitInfo cmdSubmitInfo = VkHelpers::CommandBufferSubmitInfo(cmd);
+    VkSubmitInfo2 submit = VkHelpers::SubmitInfo(&cmdSubmitInfo, nullptr, nullptr);
+
+    VK_CHECK(vkQueueSubmit2(_immediateQueue.queue, 1, &submit, _immediateFence));
+
+    VK_CHECK(vkWaitForFences(_vulkanContext.device, 1, &_immediateFence, true, 9999999999));
+}
+
+VulkanImage FGSEngine::CreateImage(VkExtent3D size, VkFormat format, VkImageUsageFlags usageFlags)
+{
+    VulkanImage newImage;
+    newImage.imageFormat = format;
+    newImage.imageExtent = size;
+
+    VkImageCreateInfo imageInfo = VkHelpers::ImageCreateInfo(newImage.imageFormat, usageFlags, newImage.imageExtent);
     
+    VmaAllocationCreateInfo allocInfo = {};
+    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    allocInfo.requiredFlags = static_cast<VkMemoryPropertyFlags>(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    VK_CHECK(vmaCreateImage(_allocator, &imageInfo, &allocInfo, &newImage.image, &newImage.allocation, nullptr));
+
+    VkImageAspectFlags aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
+
+    VkImageViewCreateInfo viewInfo = VkHelpers::ImageViewCreateInfo(newImage.imageFormat, newImage.image, aspectFlags);
+
+    VK_CHECK(vkCreateImageView(_vulkanContext.device, &viewInfo, nullptr, &newImage.imageView));
+
+    return newImage;
+}
+
+VulkanImage FGSEngine::CreateAndFillImage(TextureLoader::TextureResult* textureData, VkImageUsageFlags usageFlags)
+{
+    size_t dataSize = textureData->width * textureData->height * 4;
+    VulkanBuffer uploadBuffer = CreateBuffer(dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+    std::memcpy(uploadBuffer.allocationInfo.pMappedData, textureData->data, dataSize);
+
+    VkExtent3D extent;
+    extent.width = textureData->width;
+    extent.height = textureData->height;
+    extent.depth = 1;
+    
+    VulkanImage newImage = CreateImage(extent, VK_FORMAT_R8G8B8A8_UNORM, usageFlags | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+    
+    ImmediateSubmit([&](VkCommandBuffer cmd)
+    {
+        VkHelpers::TransitionImage(cmd, newImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+        VkBufferImageCopy copyRegion = {};
+        copyRegion.bufferOffset = 0;
+        copyRegion.bufferRowLength = 0;
+        copyRegion.bufferImageHeight = 0;
+
+        copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        copyRegion.imageSubresource.mipLevel = 0;
+        copyRegion.imageSubresource.baseArrayLayer = 0;
+        copyRegion.imageSubresource.layerCount = 1;
+        copyRegion.imageExtent = newImage.imageExtent;
+
+        vkCmdCopyBufferToImage(cmd, uploadBuffer.buffer, newImage.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
+        
+        VkHelpers::TransitionImage(cmd, newImage.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    });
+
+    DestroyBuffer(uploadBuffer);
+
+    return newImage;
+}
+
+VulkanBuffer FGSEngine::CreateBuffer(size_t allocSize, VkBufferUsageFlags usageFlags, VmaMemoryUsage memoryUsage)
+{
+    VkBufferCreateInfo bufferInfo = { .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, .pNext = nullptr };
+    bufferInfo.size = allocSize;
+    bufferInfo.usage = usageFlags;
+
+    VmaAllocationCreateInfo allocInfo = {};
+    allocInfo.usage = memoryUsage;
+    allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+
+    VulkanBuffer newBuffer;
+
+    VK_CHECK(vmaCreateBuffer(_allocator, &bufferInfo, &allocInfo, &newBuffer.buffer, &newBuffer.allocation, &newBuffer.allocationInfo));
+
+    return newBuffer;
+}
+
+void FGSEngine::DestroyBuffer(const VulkanBuffer& buffer)
+{
+    vmaDestroyBuffer(_allocator, buffer.buffer, buffer.allocation);
 }

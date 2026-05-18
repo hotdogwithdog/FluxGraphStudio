@@ -1,16 +1,22 @@
 ﻿#pragma once
 
 #include "DeletionStack.h"
-#include "GPU/VkTypes.h"
-#include "GPU/VulkanContext.h"
-#include "GPU/VulkanQueue.h"
-#include "Window.h"
 #include "GPU/FrameData.h"
+#include "GPU/VkTypes.h"
+#include "GPU/VulkanBuffer.h"
+#include "GPU/VulkanContext.h"
 #include "GPU/VulkanDescriptors.h"
-#include "GPU/VulkanSwapchain.h"
 #include "GPU/VulkanImage.h"
 #include "GPU/VulkanPipeline.h"
+#include "GPU/VulkanQueue.h"
+#include "GPU/VulkanSwapchain.h"
+#include "Window.h"
 
+
+namespace TextureLoader
+{
+    struct TextureResult;
+}
 
 constexpr unsigned int FRAME_OVERLAP = 2;
 
@@ -49,6 +55,13 @@ private:
     VkDescriptorSetLayout _drawImageDescriptorSetLayout;
     VkExtent2D _drawExtent; // Used in the actual draw
 
+    // Default samplers
+    VkSampler _defaultSamplerNearest;
+    VkSampler _defaultSamplerLinear;
+
+    // TODO: Change this to the graph system
+    VulkanImage _testImage;
+
     // TODO: Change this to the graph system
     VulkanPipeline _drawPipeline;
 
@@ -68,6 +81,7 @@ public:
     void Run();
 
     void CleanUp();
+    
 
 private:
     void InitVulkan();
@@ -76,9 +90,19 @@ private:
     void InitSyncStructures();
     void InitDescriptors(); // TODO: This will change a lot at least the implementation when the cache and gNode logic is added, right now just a simple binding 0 of a image nothing more
     void InitPipelines();
+    void InitDefaultSamplers();
+    void InitTestImage(); // TODO: This will be removed when the graph logic is running just for test the upload of images
     void InitUI();
 
-    void CreateSwapChain(uint32_t width, uint32_t height);
+    void DestroySwapchain();
+    void ResizeSwapchain();
+
+    void ImmediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function);
+    VulkanImage CreateImage(VkExtent3D size, VkFormat format, VkImageUsageFlags usageFlags);
+    VulkanImage CreateAndFillImage(TextureLoader::TextureResult* textureData, VkImageUsageFlags usageFlags);
+    
+    VulkanBuffer CreateBuffer(size_t allocSize, VkBufferUsageFlags usageFlags, VmaMemoryUsage memoryUsage);
+    void DestroyBuffer(const VulkanBuffer& buffer);
 
 
     void Draw();
