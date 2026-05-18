@@ -11,6 +11,14 @@
       "displayName": "Default",
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
+	"BUILD_SHARED_LIBS": "OFF",
+
+        "ENABLE_GLSLANG_BINARIES": "OFF",
+        "ENABLE_HLSL": "OFF",
+
+        "SPIRV_SKIP_TESTS": "ON",
+        "SKIP_GLSLANG_INSTALL": "ON",
+
         "SDL_DIRECTX": "OFF",
 	"SDL_DUMMYCAMERA": "OFF",
 	"SDL_DUMMYAUDIO": "OFF",

@@ -5,7 +5,7 @@
 add_subdirectory(SDL)
 add_subdirectory(vk-bootstrap)
 add_subdirectory(glm)
-add_subdirectory(shaderc)
+add_subdirectory(glslang)
 
 # =========================
 # ImGui (manual)

@@ -18,6 +18,9 @@ void Logger::Log(const LogLevel& level, const std::string& message)
     std::ostringstream headerLog;
     switch (level)
     {
+    case LogLevel::Info:
+        headerLog << SET_COLOR_CONSOLE(27) << "INFO: " << RESET_COLOR_CONSOLE;
+        break;
     case LogLevel::Debug:
         headerLog << "DEBUG: ";
         break;
@@ -32,8 +35,10 @@ void Logger::Log(const LogLevel& level, const std::string& message)
         return;
     }
 
+#if _DEBUG
     std::cout << headerLog.str() << message << std::endl;
-
+#endif
+    
     messages[endMessagesIndex] = LogMessage(level, message);
     endMessagesIndex = (endMessagesIndex + 1) % LOG_MESSAGE_MAX;
     if (startMessageIndex == endMessagesIndex) startMessageIndex = (startMessageIndex + 1) % LOG_MESSAGE_MAX;

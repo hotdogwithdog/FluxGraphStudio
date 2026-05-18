@@ -7,6 +7,9 @@
 [submodule "ThirdParty/imgui"]
 	path = ThirdParty/imgui
 	url = https://github.com/ocornut/imgui.git
-[submodule "ThirdParty/shaderc"]
-	path = ThirdParty/shaderc
-	url = https://github.com/google/shaderc.git
+[submodule "ThirdParty/vk-bootstrap"]
+	path = ThirdParty/vk-bootstrap
+	url = https://github.com/charles-lunarg/vk-bootstrap.git
+[submodule "ThirdParty/glslang"]
+	path = ThirdParty/glslang
+	url = https://github.com/KhronosGroup/glslang.git

@@ -37,6 +37,8 @@ void FGSEngine::Init()
 
     InitDescriptors();
 
+    ShaderCompiler::InitGlslCompiler();
+
     InitPipelines();
     
     
@@ -86,13 +88,14 @@ void FGSEngine::Run()
 
 void FGSEngine::Draw()
 {
-    Logger::Log(Logger::LogLevel::Debug, "Drawing");
+    //Logger::Log(Logger::LogLevel::Debug, "Drawing");
 }
 
 void FGSEngine::CleanUp()
 {
     if (!_bIsInitialized) return;
 
+    ShaderCompiler::ShutdownGlslCompiler();
     
 }
 
@@ -295,9 +298,9 @@ void FGSEngine::InitPipelines()
 {
     // TODO: Test for see the shaders compilation
 
-    std::vector<uint32_t> spirVShaderData = ShaderCompiler::CompileGlslFile("SimpleImageRender.comp");
+    ShaderCompiler::ShaderCompilationResult compilationResult = ShaderCompiler::CompileGlslFileIntoSpirV("gradient.comp");
 
-    //Logger::Log(Logger::LogLevel::Debug, std::format("Shader size: {}; Shader bytes: ", spirVShaderData.size(), spirVShaderData.data()));
+    
 }
 
 void FGSEngine::InitUI()

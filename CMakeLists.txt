@@ -3,7 +3,8 @@ cmake_minimum_required(VERSION 3.25)
 project(FGS)
 
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
+
+add_definitions(-DASSETS_DIR="${CMAKE_SOURCE_DIR}/Assets/")
 
 
 # =========================
@@ -49,7 +50,14 @@ add_subdirectory(ThirdParty)
 
 target_link_libraries(FGS PRIVATE
 	Vulkan::Vulkan
-	shaderc_combined
+
+	glslang
+	glslang::glslang-default-resource-limits
+	SPIRV
+	SPIRV-Tools-opt
+	SPIRV-Tools	
+
+
 	SDL3::SDL3
 	glm
 	vk-bootstrap
