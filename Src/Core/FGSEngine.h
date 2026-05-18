@@ -9,6 +9,7 @@
 #include "GPU/VulkanDescriptors.h"
 #include "GPU/VulkanSwapchain.h"
 #include "GPU/VulkanImage.h"
+#include "GPU/VulkanPipeline.h"
 
 
 constexpr unsigned int FRAME_OVERLAP = 2;
@@ -34,6 +35,7 @@ private:
     VulkanSwapchain _swapchain;
 
     FrameData _frames[FRAME_OVERLAP];
+    uint32_t _frameNumber = 0;
 
     VkCommandPool _immediateCommandPool;
     VkCommandBuffer _immediateCommandBuffer;
@@ -41,13 +43,20 @@ private:
 
     // The Draw Image is the image that fills the window so later on surely it will be a sourceImage and previewImage but this is a composition of that 2 and the editor UI
     // later on this image is copied to the swapchain image to be presented to the screen
-    VulkanImage _drawImage;
+    VulkanImage _drawImage; // Extent of this draw image is representing is original resolution not the window draw resolution
     Descriptors::DescriptorAllocator _drawImageAllocator;
     VkDescriptorSet _drawImageDescriptorSet;
     VkDescriptorSetLayout _drawImageDescriptorSetLayout;
+    VkExtent2D _drawExtent; // Used in the actual draw
+
+    // TODO: Change this to the graph system
+    VulkanPipeline _drawPipeline;
 
     VmaAllocator _allocator;
     DeletionStack _mainDeletionStack;
+
+private:
+    inline FrameData& GetCurrentFrame() { return _frames[_frameNumber % FRAME_OVERLAP]; }
     
 public:
     FGSEngine() = default;

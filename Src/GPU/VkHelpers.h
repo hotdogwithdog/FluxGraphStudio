@@ -1,6 +1,7 @@
 #pragma once
 
 #include "VkTypes.h"
+#include <vector>
 
 namespace VkHelpers
 {
@@ -12,6 +13,21 @@ namespace VkHelpers
 
     VkFenceCreateInfo FenceCreateInfo(VkFenceCreateFlags flags = 0);
     VkSemaphoreCreateInfo SemaphoreCreateInfo(VkSemaphoreCreateFlags flags = 0);
+
+    VkSemaphoreSubmitInfo SemaphoreSubmitInfo(VkPipelineStageFlags2 stageMask, VkSemaphore semaphore);
+
+    VkSubmitInfo2 SubmitInfo(VkCommandBufferSubmitInfo* cmd, VkSemaphoreSubmitInfo* signalSemaphoreInfo, VkSemaphoreSubmitInfo* waitSemaphoreInfo);
+
+    bool LoadShaderModule(VkDevice device, const std::vector<uint32_t>& spirv, VkShaderModule* outShaderModule);
+
+    VkCommandBufferBeginInfo CommandBufferBeginInfo(VkCommandBufferUsageFlags flags = 0);
+
+    VkCommandBufferSubmitInfo CommandBufferSubmitInfo(VkCommandBuffer cmd);
+
+    void TransitionImage(VkCommandBuffer cmd, VkImage image, VkImageLayout currentLayout, VkImageLayout newLayout);
     
+    VkImageSubresourceRange ImageSubresourceRange(VkImageAspectFlags aspectMask);
+
+    void CopyImageToImage(VkCommandBuffer cmd, VkImage sourceImage, VkImage destImage, VkExtent2D sourceSize, VkExtent2D destSize);
     
 }

@@ -88,7 +88,80 @@ void FGSEngine::Run()
 
 void FGSEngine::Draw()
 {
-    //Logger::Log(Logger::LogLevel::Debug, "Drawing");
+    // Synchronization
+    VK_CHECK(vkWaitForFences(_vulkanContext.device, 1, &GetCurrentFrame().renderFence, true, 1000000000));
+    VK_CHECK(vkResetFences(_vulkanContext.device, 1, &GetCurrentFrame().renderFence));
+
+    GetCurrentFrame().deletionStack.Flush();
+    // TODO: Clear pools of the per frame descriptor allocator if added
+
+    uint32_t swapchainImageIndex;
+    VkResult e = vkAcquireNextImageKHR(_vulkanContext.device, _swapchain.swapChain, 1000000000, GetCurrentFrame().acquireSemaphore, nullptr, &swapchainImageIndex);
+    if (e == VK_ERROR_OUT_OF_DATE_KHR)
+    {
+        _window.bResizeRequested = true;
+        return;
+    }
+
+    // Take and reset the cmd
+    VkCommandBuffer cmd = GetCurrentFrame().commandBuffer;
+    VK_CHECK(vkResetCommandBuffer(cmd, 0));
+
+    _drawExtent.width = std::min(_swapchain.swapchainExtent.width, _drawImage.imageExtent.width);
+    _drawExtent.height = std::min(_swapchain.swapchainExtent.height, _drawImage.imageExtent.height);
+
+    // Start the cmd record
+    VkCommandBufferBeginInfo cmdBeginInfo = VkHelpers::CommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
+
+    VkHelpers::TransitionImage(cmd, _drawImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+
+    // DRAW ITSELF
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, _drawPipeline.pipeline);
+
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, _drawPipeline.layout, 0, 1, &_drawImageDescriptorSet, 0, nullptr);
+
+    vkCmdDispatch(cmd, std::ceil(_drawExtent.width / 16.0f), std::ceil(_drawExtent.height / 16.0f), 1);
+    // END DRAW ITSELF
+
+    VkHelpers::TransitionImage(cmd, _drawImage.image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+    VkHelpers::TransitionImage(cmd, _swapchain.swapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+    VkHelpers::CopyImageToImage(cmd, _drawImage.image, _swapchain.swapchainImages[swapchainImageIndex], _drawExtent, _swapchain.swapchainExtent);
+
+    VkHelpers::TransitionImage(cmd, _swapchain.swapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+
+    VK_CHECK(vkEndCommandBuffer(cmd));
+
+    // PREPARE THE SUBMISION
+    VkCommandBufferSubmitInfo cmdSubmitInfo = VkHelpers::CommandBufferSubmitInfo(cmd);
+
+    VkSemaphoreSubmitInfo waitInfo = VkHelpers::SemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR, GetCurrentFrame().acquireSemaphore);
+    VkSemaphoreSubmitInfo signalInfo = VkHelpers::SemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, _swapchain.swapchainSubmitSemaphores[swapchainImageIndex]);
+
+    VkSubmitInfo2 submit = VkHelpers::SubmitInfo(&cmdSubmitInfo, &signalInfo, &waitInfo);
+
+    VK_CHECK(vkQueueSubmit2(_mainQueue.queue, 1, &submit, GetCurrentFrame().renderFence));
+
+    VkPresentInfoKHR presentInfo = {};
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    presentInfo.pNext = nullptr;
+
+    presentInfo.pSwapchains = &_swapchain.swapChain;
+    presentInfo.swapchainCount = 1;
+
+    presentInfo.pWaitSemaphores = &_swapchain.swapchainSubmitSemaphores[swapchainImageIndex];
+    presentInfo.waitSemaphoreCount = 1;
+
+    presentInfo.pImageIndices = &swapchainImageIndex;
+
+    VkResult presentResult = vkQueuePresentKHR(_mainQueue.queue, &presentInfo);
+    if (presentResult == VK_ERROR_OUT_OF_DATE_KHR)
+    {
+        _window.bResizeRequested = true;
+    }
+    
+    _frameNumber++;
 }
 
 void FGSEngine::CleanUp()
@@ -300,7 +373,49 @@ void FGSEngine::InitPipelines()
 
     ShaderCompiler::ShaderCompilationResult compilationResult = ShaderCompiler::CompileGlslFileIntoSpirV("gradient.comp");
 
+    if (!compilationResult.bSuccess)
+    {
+        Logger::Log(Logger::LogLevel::Error, "Failed to compile gradient.comp, Not continue with pipeline creation");
+        return;
+    }
     
+    VkPipelineLayoutCreateInfo computeLayoutCreateInfo {};
+    computeLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    computeLayoutCreateInfo.pNext = nullptr;
+    computeLayoutCreateInfo.pSetLayouts = &_drawImageDescriptorSetLayout;
+    computeLayoutCreateInfo.setLayoutCount = 1;
+
+    VkPipelineLayout computeLayoutTemp;
+    VK_CHECK(vkCreatePipelineLayout(_vulkanContext.device, &computeLayoutCreateInfo, nullptr, &computeLayoutTemp));
+
+    VkShaderModule gradientShaderModule;
+    if (!VkHelpers::LoadShaderModule(_vulkanContext.device, compilationResult.spirV, &gradientShaderModule))
+    {
+        Logger::Log(Logger::LogLevel::Warning, "Failed to load gradient shader module");
+    }
+
+    VkPipelineShaderStageCreateInfo stageInfo {};
+    stageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    stageInfo.pNext = nullptr;
+    stageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+    stageInfo.module = gradientShaderModule;
+    stageInfo.pName = "main"; // Entry point of the shader
+
+    VkComputePipelineCreateInfo pipelineCreateInfo {};
+    pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipelineCreateInfo.pNext = nullptr;
+    pipelineCreateInfo.layout = computeLayoutTemp;
+    pipelineCreateInfo.stage = stageInfo;
+
+    _drawPipeline.layout = computeLayoutTemp;
+    
+    VK_CHECK(vkCreateComputePipelines(_vulkanContext.device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &_drawPipeline.pipeline));
+
+    _mainDeletionStack.Push([this, computeLayoutTemp]()
+    {
+        vkDestroyPipelineLayout(_vulkanContext.device, computeLayoutTemp, nullptr);
+        vkDestroyPipeline(_vulkanContext.device, _drawPipeline.pipeline, nullptr);
+    });
 }
 
 void FGSEngine::InitUI()

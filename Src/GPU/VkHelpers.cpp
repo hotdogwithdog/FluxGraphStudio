@@ -78,3 +78,149 @@ VkSemaphoreCreateInfo VkHelpers::SemaphoreCreateInfo(VkSemaphoreCreateFlags flag
     info.flags = flags;
     return info;
 }
+
+VkSemaphoreSubmitInfo VkHelpers::SemaphoreSubmitInfo(VkPipelineStageFlags2 stageMask, VkSemaphore semaphore)
+{
+    VkSemaphoreSubmitInfo info {};
+    info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+    info.pNext = nullptr;
+    info.semaphore = semaphore;
+    info.stageMask = stageMask;
+    info.deviceIndex = 0;
+    info.value = 1;
+    
+    return info;
+}
+
+VkSubmitInfo2 VkHelpers::SubmitInfo(VkCommandBufferSubmitInfo* cmd, VkSemaphoreSubmitInfo* signalSemaphoreInfo, VkSemaphoreSubmitInfo* waitSemaphoreInfo)
+{
+    VkSubmitInfo2 info = {};
+    info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+    info.pNext = nullptr;
+
+    info.waitSemaphoreInfoCount = waitSemaphoreInfo == nullptr ? 0 : 1;
+    info.pWaitSemaphoreInfos = waitSemaphoreInfo;
+
+    info.signalSemaphoreInfoCount = signalSemaphoreInfo == nullptr ? 0 : 1;
+    info.pSignalSemaphoreInfos = signalSemaphoreInfo;
+
+    info.commandBufferInfoCount = 1;
+    info.pCommandBufferInfos = cmd;
+
+    return info;
+}
+
+bool VkHelpers::LoadShaderModule(VkDevice device, const std::vector<uint32_t>& spirv, VkShaderModule* outShaderModule)
+{
+    if (spirv.size() == 0) return false;
+
+    VkShaderModuleCreateInfo info = {};
+    info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    info.pNext = nullptr;
+
+    info.codeSize = spirv.size() * sizeof(uint32_t);
+    info.pCode = spirv.data();
+
+    if (vkCreateShaderModule(device, &info, nullptr, outShaderModule) != VK_SUCCESS)
+    {
+        return false;
+    }
+    
+    return true;
+}
+
+VkCommandBufferBeginInfo VkHelpers::CommandBufferBeginInfo(VkCommandBufferUsageFlags flags /*= 0*/)
+{
+    VkCommandBufferBeginInfo info = {};
+    info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    info.pNext = nullptr;
+
+    info.pInheritanceInfo = nullptr;
+    info.flags = flags;
+    return info;
+}
+
+VkCommandBufferSubmitInfo VkHelpers::CommandBufferSubmitInfo(VkCommandBuffer cmd)
+{
+    VkCommandBufferSubmitInfo info {};
+    info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+    info.pNext = nullptr;
+    info.commandBuffer = cmd;
+    info.deviceMask = 0;
+    
+    return info;
+}
+
+void VkHelpers::TransitionImage(VkCommandBuffer cmd, VkImage image, VkImageLayout currentLayout, VkImageLayout newLayout)
+{
+    VkImageMemoryBarrier2 imageBarrier = { .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2, };
+    imageBarrier.pNext = nullptr;
+
+    imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT; // TODO: Optimize this transitions
+    imageBarrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+    imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+    imageBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+
+    imageBarrier.oldLayout = currentLayout;
+    imageBarrier.newLayout = newLayout;
+
+    VkImageAspectFlags aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; // TODO: if for some reason want to support depth change this
+    imageBarrier.subresourceRange = ImageSubresourceRange(aspectMask);
+    imageBarrier.image = image;
+
+    VkDependencyInfo dependencyInfo {};
+    dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+    dependencyInfo.pNext = nullptr;
+
+    dependencyInfo.imageMemoryBarrierCount = 1;
+    dependencyInfo.pImageMemoryBarriers = &imageBarrier;
+    
+    vkCmdPipelineBarrier2(cmd, &dependencyInfo);
+}
+
+VkImageSubresourceRange VkHelpers::ImageSubresourceRange(VkImageAspectFlags aspectMask)
+{
+    VkImageSubresourceRange subresourceRange = {};
+    subresourceRange.aspectMask = aspectMask;
+    subresourceRange.baseMipLevel = 0;
+    subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
+    subresourceRange.baseArrayLayer = 0;
+    subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
+
+    return subresourceRange;
+}
+
+void VkHelpers::CopyImageToImage(VkCommandBuffer cmd, VkImage sourceImage, VkImage destImage, VkExtent2D sourceSize, VkExtent2D destSize)
+{
+    VkImageBlit2 blitRegion { .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2, .pNext = nullptr };
+
+    blitRegion.srcOffsets[1].x = sourceSize.width;
+    blitRegion.srcOffsets[1].y = sourceSize.height;
+    blitRegion.srcOffsets[1].z = 1;
+
+    blitRegion.dstOffsets[1].x = destSize.width;
+    blitRegion.dstOffsets[1].y = destSize.height;
+    blitRegion.dstOffsets[1].z = 1;
+
+    blitRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    blitRegion.srcSubresource.baseArrayLayer = 0;
+    blitRegion.srcSubresource.layerCount = 1;
+    blitRegion.srcSubresource.mipLevel = 0;
+
+    blitRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    blitRegion.dstSubresource.baseArrayLayer = 0;
+    blitRegion.dstSubresource.layerCount = 1;
+    blitRegion.dstSubresource.mipLevel = 0;
+
+    VkBlitImageInfo2 blitInfo { .sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2, .pNext = nullptr };
+
+    blitInfo.srcImage = sourceImage;
+    blitInfo.srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    blitInfo.dstImage = destImage;
+    blitInfo.dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    blitInfo.filter = VK_FILTER_LINEAR;
+    blitInfo.regionCount = 1;
+    blitInfo.pRegions = &blitRegion;
+
+    vkCmdBlitImage2(cmd, &blitInfo);
+}
