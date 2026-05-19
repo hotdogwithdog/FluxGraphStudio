@@ -53,7 +53,7 @@ namespace Descriptors
         VK_CHECK(vkCreateDescriptorPool(device, &poolInfo, nullptr, &pool));
     }
 
-    void DescriptorAllocator::ClearDescriptors(VkDevice device)
+    void DescriptorAllocator::ClearPool(VkDevice device)
     {
         VK_CHECK(vkResetDescriptorPool(device, pool, 0));
     }

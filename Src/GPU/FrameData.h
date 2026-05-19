@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "VkTypes.h"
+#include "VulkanDescriptors.h"
 #include "Core/DeletionStack.h"
 
 struct FrameData
@@ -12,5 +13,5 @@ struct FrameData
     VkFence renderFence; // Fence that is used for wait to this frame to be usable
 
     DeletionStack deletionStack; // Per frame deletion stack for per frame resources
-    //DescriptorAllocatorGrowable frameDescriptorAllocator; // TODO: Des comment this line
+    Descriptors::DescriptorAllocator frameDescriptorAllocator; // Basically used only for Common Uniform buffer of data that all shaders shared (maybe change it to push constants it fits well)
 };

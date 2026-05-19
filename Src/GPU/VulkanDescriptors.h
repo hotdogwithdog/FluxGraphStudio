@@ -33,7 +33,7 @@ namespace Descriptors
         DescriptorAllocator() = default;
 
         void InitPool(VkDevice device, uint32_t maxSets, std::span<PoolSizeRatio> poolRatios); // Span is more like a linked list so with this we are not coping the list
-        void ClearDescriptors(VkDevice device);
+        void ClearPool(VkDevice device);
         void DestroyPool(VkDevice device);
 
         VkDescriptorSet Allocate(VkDevice device, VkDescriptorSetLayout layout);

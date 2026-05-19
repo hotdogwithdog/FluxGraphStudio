@@ -2,17 +2,16 @@
 
 #include <cassert>
 #include <chrono>
-#include <iostream>
-#include <ostream>
 #include <thread>
 
+#include "Assets/TextureLoader.h"
 #include "GPU/VkHelpers.h"
+#include "GPU/VulkanBuffer.h"
+#include "GPU/VulkanDescriptors.h"
 #include "SDL3/SDL_init.h"
 #include "SDL3/SDL_vulkan.h"
-#include "VkBootstrap.h"
-#include "Assets/TextureLoader.h"
-#include "GPU/VulkanDescriptors.h"
 #include "ShaderCompiler/ShaderCompiler.h"
+#include "VkBootstrap.h"
 
 
 FGSEngine* loadedEngine = nullptr;
@@ -101,7 +100,7 @@ void FGSEngine::Draw()
     VK_CHECK(vkResetFences(_vulkanContext.device, 1, &GetCurrentFrame().renderFence));
 
     GetCurrentFrame().deletionStack.Flush();
-    // TODO: Clear pools of the per frame descriptor allocator if added
+    GetCurrentFrame().frameDescriptorAllocator.ClearPool(_vulkanContext.device);
 
     uint32_t swapchainImageIndex;
     VkResult e = vkAcquireNextImageKHR(_vulkanContext.device, _swapchain.swapChain, 1000000000, GetCurrentFrame().acquireSemaphore, nullptr, &swapchainImageIndex);
@@ -124,10 +123,38 @@ void FGSEngine::Draw()
 
     VkHelpers::TransitionImage(cmd, _drawImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 
+    // Create the common Buffer and the descriptorSet for it in the Per Frame Resources also fill it
+    VulkanBuffer commonValuesBuffer = CreateBuffer(sizeof(float) * 4, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+    GetCurrentFrame().deletionStack.Push([this, commonValuesBuffer]()
+    {
+        DestroyBuffer(commonValuesBuffer);
+    });
+
+    {
+        float* commonValues;
+        vmaMapMemory(_allocator, commonValuesBuffer.allocation, (void**)&commonValues);
+        commonValues[0] = _window.windowExtent.width;
+        commonValues[1] = _window.windowExtent.height;
+        commonValues[2] = _testImage.imageExtent.width;
+        commonValues[3] = _testImage.imageExtent.height;
+        vmaUnmapMemory(_allocator, commonValuesBuffer.allocation);
+    }
+
+    VkDescriptorSet commonDescriptorSet = GetCurrentFrame().frameDescriptorAllocator.Allocate(_vulkanContext.device, _commonDescriptorSetLayout);
+    {
+        Descriptors::DescriptorWriter writer;
+        writer.WriteBuffer(0, commonValuesBuffer.buffer, sizeof(float) * 4, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+
+        writer.UpdateSet(_vulkanContext.device, commonDescriptorSet);
+    }
+    
     // DRAW ITSELF
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, _drawPipeline.pipeline);
 
-    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, _drawPipeline.layout, 0, 1, &_drawImageDescriptorSet, 0, nullptr);
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, _drawPipeline.layout, 0, 1, &commonDescriptorSet, 0, nullptr);
+
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, _drawPipeline.layout, 1, 1, &_drawImageDescriptorSet, 0, nullptr);
 
     vkCmdDispatch(cmd, std::ceil(_drawExtent.width / 16.0f), std::ceil(_drawExtent.height / 16.0f), 1);
     // END DRAW ITSELF
@@ -377,6 +404,34 @@ void FGSEngine::InitDescriptors()
 
         vkDestroyDescriptorSetLayout(_vulkanContext.device, _drawImageDescriptorSetLayout, nullptr);
     });
+
+    // Init the DescriptorSet
+    for (unsigned int i = 0; i < FRAME_OVERLAP; ++i)
+    {
+        std::vector<Descriptors::PoolSizeRatio> framePoolSizes =
+            {
+                { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1 }
+            };
+        
+        _frames[i].frameDescriptorAllocator.InitPool(_vulkanContext.device, 1, framePoolSizes);
+
+        _mainDeletionStack.Push([this, i]()
+        {
+            _frames[i].frameDescriptorAllocator.DestroyPool(_vulkanContext.device);
+        });
+    }
+
+    // Descriptor set with that buffer
+    {
+        Descriptors::DescriptorLayoutBuilder builder;
+        builder.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+        _commonDescriptorSetLayout = builder.Build(_vulkanContext.device);
+    }
+
+    _mainDeletionStack.Push([this]()
+    {
+        vkDestroyDescriptorSetLayout(_vulkanContext.device, _commonDescriptorSetLayout, nullptr);
+    });
 }
 
 void FGSEngine::InitPipelines()
@@ -390,12 +445,14 @@ void FGSEngine::InitPipelines()
         Logger::Log(Logger::LogLevel::Error, "Failed to compile sampleImage.comp, Not continue with pipeline creation");
         return;
     }
+
+    VkDescriptorSetLayout descriptorSetLayouts[] = { _commonDescriptorSetLayout, _drawImageDescriptorSetLayout };
     
     VkPipelineLayoutCreateInfo computeLayoutCreateInfo {};
     computeLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     computeLayoutCreateInfo.pNext = nullptr;
-    computeLayoutCreateInfo.pSetLayouts = &_drawImageDescriptorSetLayout;
-    computeLayoutCreateInfo.setLayoutCount = 1;
+    computeLayoutCreateInfo.pSetLayouts = descriptorSetLayouts;
+    computeLayoutCreateInfo.setLayoutCount = 2;
 
     VkPipelineLayout computeLayoutTemp;
     VK_CHECK(vkCreatePipelineLayout(_vulkanContext.device, &computeLayoutCreateInfo, nullptr, &computeLayoutTemp));

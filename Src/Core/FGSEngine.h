@@ -61,6 +61,7 @@ private:
 
     // TODO: Change this to the graph system
     VulkanImage _testImage;
+    VkDescriptorSetLayout _commonDescriptorSetLayout;
 
     // TODO: Change this to the graph system
     VulkanPipeline _drawPipeline;
