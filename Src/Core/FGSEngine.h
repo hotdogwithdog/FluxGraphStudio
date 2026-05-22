@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "Window.h"
+#include "Editor/Editor.h"
 #include "Renderer/Renderer.h"
 #include "SDL3/SDL_events.h"
 
@@ -24,6 +25,8 @@ private:
     Window _window = Window(1700, 900, "Flux Graph Studio");
 
     Renderer _renderer;
+
+    Editor _editor;
 
 private:
     bool PollEvents(SDL_Event& e);

@@ -1,10 +1,14 @@
 ﻿#include "Renderer.h"
 
+#include <backends/imgui_impl_sdl3.h>
+#include <backends/imgui_impl_vulkan.h>
+
 #include "Assets/TextureLoader.h"
 #include "Core/Window.h"
 #include "SDL3/SDL_vulkan.h"
 #include "ShaderCompiler/ShaderCompiler.h"
 #include "VkBootstrap.h"
+#include "Editor/Editor.h"
 #include "SDL3/SDL_init.h"
 
 void Renderer::Init(Window* window)
@@ -35,7 +39,11 @@ void Renderer::Init(Window* window)
 
     InitPipelines();
 
+    InitImGui();
 
+    // TODO: Remove this just for testing
+    
+    _testID = (ImTextureID)ImGui_ImplVulkan_AddTexture(_defaultSamplerLinear, _testImage.imageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 
     _bIsInitialized = true;
@@ -377,6 +385,60 @@ void Renderer::InitTestImage()
     TextureLoader::FreeTextureResult(&result);
 }
 
+void Renderer::InitImGui()
+{
+    VkDescriptorPoolSize poolSizes[] =
+    {
+        { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
+        { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
+        { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 }
+    };
+
+    VkDescriptorPoolCreateInfo poolInfo = { .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO, .pNext = nullptr };
+    poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+    poolInfo.maxSets = 1000;
+    poolInfo.poolSizeCount = static_cast<uint32_t>(std::size(poolSizes));
+    poolInfo.pPoolSizes = poolSizes;
+
+    VkDescriptorPool imguiPool;
+    VK_CHECK(vkCreateDescriptorPool(_vulkanContext.device, &poolInfo, nullptr, &imguiPool));
+
+    ImGui::CreateContext();
+    
+    ImGui_ImplSDL3_InitForVulkan(_window->window);
+
+    ImGui_ImplVulkan_InitInfo initInfo = {};
+    initInfo.Instance = _vulkanContext.instance;
+    initInfo.PhysicalDevice = _vulkanContext.physicalDevice;
+    initInfo.Device = _vulkanContext.device;
+    initInfo.Queue = _mainQueue.queue;
+    initInfo.DescriptorPool = imguiPool;
+    initInfo.MinImageCount = 3;
+    initInfo.ImageCount = 3;
+    initInfo.UseDynamicRendering = true;
+
+    initInfo.PipelineInfoMain.PipelineRenderingCreateInfo = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR, .pNext = nullptr };
+    initInfo.PipelineInfoMain.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
+    initInfo.PipelineInfoMain.PipelineRenderingCreateInfo.pColorAttachmentFormats = &_swapchain.imageFormat;
+    initInfo.PipelineInfoMain.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+
+    ImGui_ImplVulkan_Init(&initInfo);
+
+    _mainDeletionStack.Push([this, imguiPool]()
+    {
+        ImGui_ImplVulkan_Shutdown();
+        vkDestroyDescriptorPool(_vulkanContext.device, imguiPool, nullptr);
+    });
+}
+
 
 void Renderer::DestroySwapchain()
 {
@@ -582,8 +644,13 @@ void Renderer::Draw()
     VkHelpers::TransitionImage(cmd, _swapchain.swapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
     VkHelpers::CopyImageToImage(cmd, _drawImage.image, _swapchain.swapchainImages[swapchainImageIndex], _drawExtent, _swapchain.swapchainExtent);
+    
+    // EDITOR
+    VkHelpers::TransitionImage(cmd, _swapchain.swapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-    VkHelpers::TransitionImage(cmd, _swapchain.swapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    DrawEditor(cmd, _swapchain.swapchainImageViews[swapchainImageIndex]);
+    
+    VkHelpers::TransitionImage(cmd, _swapchain.swapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
     VK_CHECK(vkEndCommandBuffer(cmd));
 
@@ -616,4 +683,23 @@ void Renderer::Draw()
     }
     
     _frameNumber++;
+}
+
+void Renderer::DrawEditor(VkCommandBuffer cmd, VkImageView targetImageView)
+{
+    VkRenderingAttachmentInfo colorAttachment = VkHelpers::AttachmentInfo(targetImageView, nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    VkRenderingInfo renderInfo = VkHelpers::RenderingInfo(_swapchain.swapchainExtent, &colorAttachment);
+
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplSDL3_NewFrame();
+
+    Editor::BuildEditor(_testID, _testImage.imageExtent.width, _testImage.imageExtent.height);
+    
+    ImGui::Render();
+    
+    vkCmdBeginRendering(cmd, &renderInfo);
+
+    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
+
+    vkCmdEndRendering(cmd);
 }

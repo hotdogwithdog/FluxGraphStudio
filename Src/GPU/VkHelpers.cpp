@@ -224,3 +224,34 @@ void VkHelpers::CopyImageToImage(VkCommandBuffer cmd, VkImage sourceImage, VkIma
 
     vkCmdBlitImage2(cmd, &blitInfo);
 }
+
+VkRenderingAttachmentInfo VkHelpers::AttachmentInfo(VkImageView view, VkClearValue* clear, VkImageLayout layout /*= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL*/)
+{
+    VkRenderingAttachmentInfo info = {};
+    info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    info.pNext = nullptr;
+
+    info.imageView = view;
+    info.imageLayout = layout;
+    info.loadOp = clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+    info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    if (clear) info.clearValue = *clear;
+
+    return info;
+}
+
+VkRenderingInfo VkHelpers::RenderingInfo(VkExtent2D extent, VkRenderingAttachmentInfo* colorAttachment)
+{
+    VkRenderingInfo info = {};
+    info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+    info.pNext = nullptr;
+
+    info.renderArea = VkRect2D { VkOffset2D {0, 0}, extent };
+    info.layerCount = 1;
+    info.colorAttachmentCount = 1;
+    info.pColorAttachments = colorAttachment;
+    info.pDepthAttachment = nullptr;
+    info.pStencilAttachment = nullptr;
+
+    return info;
+}

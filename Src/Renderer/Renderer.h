@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include <imgui.h>
+
 #include "GPU/VkTypes.h"
 #include "GPU/GPUTypes.h"
 
@@ -75,6 +77,10 @@ private:
 
     VmaAllocator _allocator;
     DeletionStack _mainDeletionStack;
+
+
+    // TODO: Remove this
+    ImTextureID _testID;
     
 private:
     void InitVulkan();
@@ -85,6 +91,7 @@ private:
     void InitPipelines();
     void InitDefaultSamplers();
     void InitTestImage(); // TODO: This will be removed when the graph logic is running just for test the upload of images
+    void InitImGui();
 
     void DestroySwapchain();
     void ResizeSwapchain();
@@ -98,6 +105,8 @@ private:
 
 
     void Draw();
+
+    void DrawEditor(VkCommandBuffer cmd, VkImageView targetImageView);
 
     
     inline FrameData& GetCurrentFrame() { return _frames[_frameNumber % FRAME_OVERLAP]; }

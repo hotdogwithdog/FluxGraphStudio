@@ -29,5 +29,8 @@ namespace VkHelpers
     VkImageSubresourceRange ImageSubresourceRange(VkImageAspectFlags aspectMask);
 
     void CopyImageToImage(VkCommandBuffer cmd, VkImage sourceImage, VkImage destImage, VkExtent2D sourceSize, VkExtent2D destSize);
+
+    VkRenderingAttachmentInfo AttachmentInfo(VkImageView view, VkClearValue* clear, VkImageLayout layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    VkRenderingInfo RenderingInfo(VkExtent2D extent, VkRenderingAttachmentInfo* colorAttachment);
     
 }

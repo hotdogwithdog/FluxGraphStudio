@@ -3,6 +3,7 @@
 #include <cassert>
 #include <chrono>
 #include <thread>
+#include <backends/imgui_impl_sdl3.h>
 
 #include "VkBootstrap.h"
 
@@ -39,7 +40,7 @@ void FGSEngine::Run()
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             continue;
         }
-
+        
         _renderer.Render();
         
         // TODO: Editor
@@ -71,6 +72,8 @@ bool FGSEngine::PollEvents(SDL_Event& e)
         {
             _window.isMinimized = false;
         }
+
+        ImGui_ImplSDL3_ProcessEvent(&e);
     }
 
     return false;
