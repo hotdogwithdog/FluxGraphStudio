@@ -7,7 +7,7 @@ layout(set = 0, binding = 0) uniform UniformBuffer
 {
     vec2 outputSize;
     vec2 inputTexSize;
-} UB;
+} Common;
 
 // private descriptor set
 layout(rgba16f,set = 1, binding = 0) uniform image2D image;
@@ -17,9 +17,9 @@ void main()
 {
     ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
 
-    if(pixelCoord.x < UB.outputSize.x && pixelCoord.y < UB.outputSize.y)
+    if(pixelCoord.x < Common.outputSize.x && pixelCoord.y < Common.outputSize.y)
     {
-        vec2 UV = vec2(pixelCoord) / UB.outputSize;
+        vec2 UV = vec2(pixelCoord) / Common.outputSize;
 
         vec3 color = texture(inputTex, UV).xyz;
         color = mix(color, vec3(1.0, 0.0, 0.0), 0.2);
