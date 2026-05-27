@@ -2,6 +2,7 @@
 
 #include <imgui.h>
 
+#include "Editor/EditorContext.h"
 #include "GPU/VkTypes.h"
 #include "GPU/GPUTypes.h"
 
@@ -69,7 +70,6 @@ private:
     VkSampler _defaultSamplerLinear;
 
     // TODO: Change this to the graph system
-    VulkanImage _testImage;
     VkDescriptorSetLayout _commonDescriptorSetLayout;
 
     // TODO: Change this to the graph system
@@ -80,7 +80,8 @@ private:
 
 
     // TODO: Remove this
-    ImTextureID _testID;
+    EditorImage _sourceImage;
+    EditorImage _previewImage;
     
 private:
     void InitVulkan();
@@ -90,7 +91,7 @@ private:
     void InitDescriptors(); // TODO: This will change a lot at least the implementation when the cache and gNode logic is added, right now just a simple binding 0 of a image nothing more
     void InitPipelines();
     void InitDefaultSamplers();
-    void InitTestImage(); // TODO: This will be removed when the graph logic is running just for test the upload of images
+    void InitSourceImage(); // TODO: This will be removed when the graph logic is running just for test the upload of images
     void InitImGui();
 
     void DestroySwapchain();

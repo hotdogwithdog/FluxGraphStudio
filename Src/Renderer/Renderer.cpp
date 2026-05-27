@@ -31,7 +31,7 @@ void Renderer::Init(Window* window)
 
     InitDefaultSamplers();
 
-    InitTestImage();
+    InitSourceImage();
 
     InitDescriptors();
 
@@ -42,9 +42,8 @@ void Renderer::Init(Window* window)
     InitImGui();
 
     // TODO: Remove this just for testing
-    
-    _testID = (ImTextureID)ImGui_ImplVulkan_AddTexture(_defaultSamplerLinear, _testImage.imageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
+    _sourceImage.ID = (ImTextureID)ImGui_ImplVulkan_AddTexture(_defaultSamplerLinear, _sourceImage.resource.imageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    _previewImage.ID = (ImTextureID)ImGui_ImplVulkan_AddTexture(_defaultSamplerLinear, _previewImage.resource.imageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
     _bIsInitialized = true;
 }
@@ -256,7 +255,7 @@ void Renderer::InitDescriptors()
     {
         Descriptors::DescriptorWriter writer;
         writer.WriteImage(0, _drawImage.imageView, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
-        writer.WriteImage(1, _testImage.imageView, _defaultSamplerLinear, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        writer.WriteImage(1, _sourceImage.resource.imageView, _defaultSamplerLinear, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
         
         writer.UpdateSet(_vulkanContext.device, _drawImageDescriptorSet);
     }
@@ -370,7 +369,7 @@ void Renderer::InitDefaultSamplers()
     });
 }
 
-void Renderer::InitTestImage()
+void Renderer::InitSourceImage()
 {
     TextureLoader::TextureResult result;
     
@@ -381,8 +380,14 @@ void Renderer::InitTestImage()
         return;
     }
 
-    _testImage = CreateAndFillImage(&result, VK_IMAGE_USAGE_SAMPLED_BIT);
+    _sourceImage.resource = CreateAndFillImage(&result, VK_IMAGE_USAGE_SAMPLED_BIT);
     TextureLoader::FreeTextureResult(&result);
+
+    _mainDeletionStack.Push([this]()
+    {
+        vkDestroyImageView(_vulkanContext.device, _sourceImage.resource.imageView, nullptr);
+        vkDestroyImage(_vulkanContext.device, _sourceImage.resource.image, nullptr);
+    });
 }
 
 void Renderer::InitImGui()
@@ -412,6 +417,11 @@ void Renderer::InitImGui()
     VK_CHECK(vkCreateDescriptorPool(_vulkanContext.device, &poolInfo, nullptr, &imguiPool));
 
     ImGui::CreateContext();
+
+    // Activate docking
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+    //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable; 
     
     ImGui_ImplSDL3_InitForVulkan(_window->window);
 
@@ -617,8 +627,8 @@ void Renderer::Draw()
         vmaMapMemory(_allocator, commonValuesBuffer.allocation, (void**)&commonValues);
         commonValues[0] = _window->windowExtent.width;
         commonValues[1] = _window->windowExtent.height;
-        commonValues[2] = _testImage.imageExtent.width;
-        commonValues[3] = _testImage.imageExtent.height;
+        commonValues[2] = _sourceImage.resource.imageExtent.width;
+        commonValues[3] = _sourceImage.resource.imageExtent.height;
         vmaUnmapMemory(_allocator, commonValuesBuffer.allocation);
     }
 
@@ -693,7 +703,11 @@ void Renderer::DrawEditor(VkCommandBuffer cmd, VkImageView targetImageView)
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplSDL3_NewFrame();
 
-    Editor::BuildEditor(_testID, _testImage.imageExtent.width, _testImage.imageExtent.height);
+    EditorContext ctx;
+    ctx.sourceImage = _sourceImage;
+    ctx.previewImage = _previewImage;
+
+    Editor::BuildEditor(ctx);
     
     ImGui::Render();
     
