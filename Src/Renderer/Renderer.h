@@ -57,13 +57,9 @@ private:
     VkCommandBuffer _immediateCommandBuffer;
     VkFence _immediateFence;
 
-    // The Draw Image is the image that fills the window so later on surely it will be a sourceImage and previewImage but this is a composition of that 2 and the editor UI
-    // later on this image is copied to the swapchain image to be presented to the screen
-    VulkanImage _drawImage; // Extent of this draw image is representing is original resolution not the window draw resolution
     Descriptors::DescriptorAllocator _drawImageAllocator;
     VkDescriptorSet _drawImageDescriptorSet;
     VkDescriptorSetLayout _drawImageDescriptorSetLayout;
-    VkExtent2D _drawExtent; // Used in the actual draw
 
     // Default samplers
     VkSampler _defaultSamplerNearest;
@@ -86,6 +82,7 @@ private:
 private:
     void InitVulkan();
     void InitSwapChain();
+    void InitPreviewImage();
     void InitCommands();
     void InitSyncStructures();
     void InitDescriptors(); // TODO: This will change a lot at least the implementation when the cache and gNode logic is added, right now just a simple binding 0 of a image nothing more

@@ -5,7 +5,7 @@ layout (local_size_x = 16, local_size_y = 16) in;
 // Common descriptor set
 layout(set = 0, binding = 0) uniform UniformBuffer
 {
-    vec2 windowSize;
+    vec2 outputSize;
     vec2 inputTexSize;
 } UB;
 
@@ -17,11 +17,12 @@ void main()
 {
     ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
 
-    if(pixelCoord.x < UB.windowSize.x && pixelCoord.y < UB.windowSize.y)
+    if(pixelCoord.x < UB.outputSize.x && pixelCoord.y < UB.outputSize.y)
     {
-        vec2 UV = vec2(pixelCoord) / UB.windowSize;
+        vec2 UV = vec2(pixelCoord) / UB.outputSize;
 
         vec3 color = texture(inputTex, UV).xyz;
+        color = mix(color, vec3(1.0, 0.0, 0.0), 0.2);
         imageStore(image, pixelCoord, vec4(color, 1.0));
     }
 }

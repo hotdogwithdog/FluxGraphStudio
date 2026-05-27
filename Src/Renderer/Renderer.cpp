@@ -25,6 +25,8 @@ void Renderer::Init(Window* window)
 
     InitSwapChain();
 
+    InitPreviewImage();
+
     InitCommands();
 
     InitSyncStructures();
@@ -40,8 +42,7 @@ void Renderer::Init(Window* window)
     InitPipelines();
 
     InitImGui();
-
-    // TODO: Remove this just for testing
+    
     _sourceImage.ID = (ImTextureID)ImGui_ImplVulkan_AddTexture(_defaultSamplerLinear, _sourceImage.resource.imageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     _previewImage.ID = (ImTextureID)ImGui_ImplVulkan_AddTexture(_defaultSamplerLinear, _previewImage.resource.imageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
@@ -134,36 +135,26 @@ void Renderer::InitVulkan()
 void Renderer::InitSwapChain()
 {
     _swapchain.Create(_vulkanContext, _window->windowExtent.width, _window->windowExtent.height);
+}
 
-    // Create the DrawImage
-    // TODO: Maybe move this to his own function because is not the swapchain even if is related for be the image of draw that later on is copied to the swapchain image
-    VkExtent3D drawImageExtent = { _window->windowExtent.width, _window->windowExtent.height, 1 };
+void Renderer::InitPreviewImage()
+{
+    // Create the PreviewImage
+    VkExtent3D previewImageExtent = { 1920, 1080, 1 };
 
-    _drawImage.imageFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
-    _drawImage.imageExtent = drawImageExtent;
-
-    VkImageUsageFlags drawImageUsageFlags{};
-    drawImageUsageFlags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-    drawImageUsageFlags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    drawImageUsageFlags |= VK_IMAGE_USAGE_STORAGE_BIT;
-    drawImageUsageFlags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-    VkImageCreateInfo drawImageInfo = VkHelpers::ImageCreateInfo(_drawImage.imageFormat, drawImageUsageFlags, _drawImage.imageExtent);
-
-    VmaAllocationCreateInfo drawImageAllocInfo = {};
-    drawImageAllocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-    drawImageAllocInfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    VkImageUsageFlags previewImageUsageFlags{};
+    previewImageUsageFlags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    previewImageUsageFlags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    previewImageUsageFlags |= VK_IMAGE_USAGE_STORAGE_BIT;
+    previewImageUsageFlags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    previewImageUsageFlags |= VK_IMAGE_USAGE_SAMPLED_BIT;
     
-    vmaCreateImage(_allocator, &drawImageInfo, &drawImageAllocInfo, &_drawImage.image, &_drawImage.allocation, nullptr);
-
-    VkImageViewCreateInfo drawImageViewCreateInfo = VkHelpers::ImageViewCreateInfo(_drawImage.imageFormat, _drawImage.image, VK_IMAGE_ASPECT_COLOR_BIT);
-
-    VK_CHECK(vkCreateImageView(_vulkanContext.device, &drawImageViewCreateInfo, nullptr, &_drawImage.imageView));
+    _previewImage.resource = CreateImage(previewImageExtent, VK_FORMAT_R16G16B16A16_SFLOAT, previewImageUsageFlags);
     
     _mainDeletionStack.Push([this]()
     {
-        vkDestroyImageView(_vulkanContext.device, _drawImage.imageView, nullptr);
-        vmaDestroyImage(_allocator, _drawImage.image, _drawImage.allocation);
+        vkDestroyImageView(_vulkanContext.device, _previewImage.resource.imageView, nullptr);
+        vmaDestroyImage(_allocator, _previewImage.resource.image, _previewImage.resource.allocation);
     });
 }
 
@@ -232,6 +223,7 @@ void Renderer::InitSyncStructures()
 
 void Renderer::InitDescriptors()
 {
+    // TODO: This will change to the graph system and will not have a default descriptor allocator instantiated it will be per node, allocator and descriptor set
     std::vector<Descriptors::PoolSizeRatio> sizes =
         {
             { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1 },
@@ -251,10 +243,10 @@ void Renderer::InitDescriptors()
 
     _drawImageDescriptorSet = _drawImageAllocator.Allocate(_vulkanContext.device, _drawImageDescriptorSetLayout);
 
-    // Write the draw image into the set
+    // Write the preview Image into the set
     {
         Descriptors::DescriptorWriter writer;
-        writer.WriteImage(0, _drawImage.imageView, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+        writer.WriteImage(0, _previewImage.resource.imageView, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
         writer.WriteImage(1, _sourceImage.resource.imageView, _defaultSamplerLinear, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
         
         writer.UpdateSet(_vulkanContext.device, _drawImageDescriptorSet);
@@ -605,14 +597,11 @@ void Renderer::Draw()
     VkCommandBuffer cmd = GetCurrentFrame().commandBuffer;
     VK_CHECK(vkResetCommandBuffer(cmd, 0));
 
-    _drawExtent.width = std::min(_swapchain.swapchainExtent.width, _drawImage.imageExtent.width);
-    _drawExtent.height = std::min(_swapchain.swapchainExtent.height, _drawImage.imageExtent.height);
-
     // Start the cmd record
     VkCommandBufferBeginInfo cmdBeginInfo = VkHelpers::CommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
 
-    VkHelpers::TransitionImage(cmd, _drawImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+    VkHelpers::TransitionImage(cmd, _previewImage.resource.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 
     // Create the common Buffer and the descriptorSet for it in the Per Frame Resources also fill it
     VulkanBuffer commonValuesBuffer = CreateBuffer(sizeof(float) * 4, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
@@ -625,8 +614,8 @@ void Renderer::Draw()
     {
         float* commonValues;
         vmaMapMemory(_allocator, commonValuesBuffer.allocation, (void**)&commonValues);
-        commonValues[0] = _window->windowExtent.width;
-        commonValues[1] = _window->windowExtent.height;
+        commonValues[0] = _previewImage.resource.imageExtent.width;
+        commonValues[1] = _previewImage.resource.imageExtent.height;
         commonValues[2] = _sourceImage.resource.imageExtent.width;
         commonValues[3] = _sourceImage.resource.imageExtent.height;
         vmaUnmapMemory(_allocator, commonValuesBuffer.allocation);
@@ -647,16 +636,13 @@ void Renderer::Draw()
 
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, _drawPipeline.layout, 1, 1, &_drawImageDescriptorSet, 0, nullptr);
 
-    vkCmdDispatch(cmd, std::ceil(_drawExtent.width / 16.0f), std::ceil(_drawExtent.height / 16.0f), 1);
+    vkCmdDispatch(cmd, std::ceil((float)_previewImage.resource.imageExtent.width / 16.0f),
+        std::ceil((float)_previewImage.resource.imageExtent.height / 16.0f), 1);
     // END DRAW ITSELF
-
-    VkHelpers::TransitionImage(cmd, _drawImage.image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-    VkHelpers::TransitionImage(cmd, _swapchain.swapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
-    VkHelpers::CopyImageToImage(cmd, _drawImage.image, _swapchain.swapchainImages[swapchainImageIndex], _drawExtent, _swapchain.swapchainExtent);
     
     // EDITOR
-    VkHelpers::TransitionImage(cmd, _swapchain.swapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    VkHelpers::TransitionImage(cmd, _previewImage.resource.image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    VkHelpers::TransitionImage(cmd, _swapchain.swapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
     DrawEditor(cmd, _swapchain.swapchainImageViews[swapchainImageIndex]);
     
