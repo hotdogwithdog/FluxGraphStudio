@@ -1,5 +1,3 @@
-#include <iostream>
-
 #include "Core/FGSEngine.h"
 
 int main()

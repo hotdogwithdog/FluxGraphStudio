@@ -3,6 +3,7 @@
 #include <imgui.h>
 
 #include "Editor/EditorContext.h"
+#include "GPU/GPUResourceManager.h"
 #include "GPU/VkTypes.h"
 #include "GPU/GPUTypes.h"
 
@@ -31,6 +32,15 @@ public:
 
     void CleanUp();
 
+    void ImmediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function);
+    VulkanImage CreateImage(VkExtent3D size, VkFormat format, VkImageUsageFlags usageFlags);
+    VulkanImage CreateAndFillImage(TextureLoader::TextureResult* textureData, VkImageUsageFlags usageFlags);
+    void DestroyImage(VulkanImage image);
+
+    
+    VulkanBuffer CreateBuffer(size_t allocSize, VkBufferUsageFlags usageFlags, VmaMemoryUsage memoryUsage);
+    void DestroyBuffer(const VulkanBuffer& buffer);
+
     
 private:
 
@@ -43,6 +53,8 @@ private:
 #endif
 
     Window* _window;
+
+    GPUResourceManager _gpuResourceManager;
     
     VulkanContext _vulkanContext;
     VulkanQueue _mainQueue;
@@ -93,14 +105,7 @@ private:
 
     void DestroySwapchain();
     void ResizeSwapchain();
-
-    void ImmediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function);
-    VulkanImage CreateImage(VkExtent3D size, VkFormat format, VkImageUsageFlags usageFlags);
-    VulkanImage CreateAndFillImage(TextureLoader::TextureResult* textureData, VkImageUsageFlags usageFlags);
     
-    VulkanBuffer CreateBuffer(size_t allocSize, VkBufferUsageFlags usageFlags, VmaMemoryUsage memoryUsage);
-    void DestroyBuffer(const VulkanBuffer& buffer);
-
 
     void Draw();
 

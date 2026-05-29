@@ -9,11 +9,14 @@
 #include "ShaderCompiler/ShaderCompiler.h"
 #include "VkBootstrap.h"
 #include "Editor/Editor.h"
+#include "Graph/NodeParser.h"
 #include "SDL3/SDL_init.h"
 
 void Renderer::Init(Window* window)
 {
     assert(_bIsInitialized == false);
+
+    _gpuResourceManager = GPUResourceManager(this);
     
     _window = window;
 
@@ -35,6 +38,16 @@ void Renderer::Init(Window* window)
 
     InitSourceImage();
 
+    // TODO: remove this is just for testing
+    NodeParser::NodeParserResult result = NodeParser::CompileGNodeFile("test.gNode");
+
+    if (!result.bSuccess)
+    {
+        Logger::Log(Logger::LogLevel::Error, result.errorMessage);
+    }
+    
+    
+    
     InitDescriptors();
 
     ShaderCompiler::InitGlslCompiler();
@@ -331,7 +344,7 @@ void Renderer::InitPipelines()
     pipelineCreateInfo.stage = stageInfo;
 
     _drawPipeline.layout = computeLayoutTemp;
-    
+
     VK_CHECK(vkCreateComputePipelines(_vulkanContext.device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &_drawPipeline.pipeline));
 
     _mainDeletionStack.Push([this, computeLayoutTemp]()
@@ -552,6 +565,12 @@ VulkanImage Renderer::CreateAndFillImage(TextureLoader::TextureResult* textureDa
     DestroyBuffer(uploadBuffer);
 
     return newImage;
+}
+
+void Renderer::DestroyImage(VulkanImage image)
+{
+    vkDestroyImageView(_vulkanContext.device, image.imageView, nullptr);
+    vkDestroyImage(_vulkanContext.device, image.image, nullptr);
 }
 
 VulkanBuffer Renderer::CreateBuffer(size_t allocSize, VkBufferUsageFlags usageFlags, VmaMemoryUsage memoryUsage)
