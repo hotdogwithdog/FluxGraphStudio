@@ -24,6 +24,7 @@ void ParseUniform(NodeParser::NodeParserResult& result, std::string& line, std::
 NodeParser::NodeParserResult NodeParser::CompileGNodeFile(std::filesystem::path path)
 {
     NodeParserResult result = {};
+    result.nodeInfo.SetPathFile(path);
     result.bSuccess = true;
     result.errorMessage = "";
     if (path.extension() != ".gNode")
@@ -47,7 +48,7 @@ NodeParser::NodeParserResult NodeParser::CompileGNodeFile(std::filesystem::path 
     }
     
     EParserSection currentSection = EParserSection::None;
-    int currentLine = -1;
+    int currentLine = 0;
     for (std::string line; std::getline(file, line); )
     {
         currentLine++;
@@ -143,7 +144,7 @@ void ParseInput(NodeParser::NodeParserResult& result, std::string& line, std::st
         return;
     }
     std::string format = line.substr(0, spacePos);
-    std::string name = line.substr(spacePos + 1, line.length() - spacePos + 1);
+    std::string name = StringUtils::Trim(line.substr(spacePos + 1, line.length() - spacePos + 1));
 
     Graph::EImageFormat eFormat = Graph::CastStringToImageFormat(format);
     if (eFormat == Graph::EImageFormat::None)
@@ -171,7 +172,7 @@ void ParseOutput(NodeParser::NodeParserResult& result, std::string& line, std::s
         return;
     }
     std::string format = line.substr(0, spacePos);
-    std::string name = line.substr(spacePos + 1, line.length() - spacePos + 1);
+    std::string name = StringUtils::Trim(line.substr(spacePos + 1, line.length() - spacePos + 1));
 
     Graph::EImageFormat eFormat = Graph::CastStringToImageFormat(format);
     if (eFormat == Graph::EImageFormat::None)
@@ -199,7 +200,7 @@ void ParseUniform(NodeParser::NodeParserResult& result, std::string& line, std::
         return;
     }
     std::string type = line.substr(0, spacePos);
-    std::string name = line.substr(spacePos + 1, line.length() - spacePos + 1);
+    std::string name = StringUtils::Trim(line.substr(spacePos + 1, line.length() - spacePos + 1));
 
     Graph::EImageFormat format = Graph::CastStringToImageFormat(type);
     Graph::EShaderParameterType eType = format == Graph::EImageFormat::None ? Graph::CastStringToShaderParameterType(type) : Graph::EShaderParameterType::Image;

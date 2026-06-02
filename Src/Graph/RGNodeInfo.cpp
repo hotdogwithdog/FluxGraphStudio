@@ -25,5 +25,15 @@ Graph::EImageFormat Graph::CastStringToImageFormat(const std::string& str)
 
 RGNodeInfo::RGNodeInfo(std::filesystem::path path)
 {
-    nodeFileName = path;
+    SetPathFile(path);
+}
+
+void RGNodeInfo::SetPathFile(std::filesystem::path path)
+{
+    _nodeFileName = path;
+}
+
+std::string RGNodeInfo::GetName()
+{
+    return _nodeFileName.filename().string();
 }

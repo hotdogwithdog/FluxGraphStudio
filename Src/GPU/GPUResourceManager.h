@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include <queue>
+
 #include "GPUTypes.h"
 
 
@@ -12,7 +14,6 @@ class Renderer;
 
 
 using GPUImageHandle = uint32_t;
-bool IsValid(uint32_t resourceHandle);
 using GPUBufferHandle = uint32_t;
 
 // This manager is for the resources that will live between frames like the uniform buffers and images that will be uploaded to a pass that a node has
@@ -47,6 +48,8 @@ private:
     GPUBufferHandle _bufferNextID = 1;
 
     std::unordered_map<GPUImageHandle, VulkanImage> _images;
+    std::queue<GPUImageHandle> _imagesFreeIDs;
 
     std::unordered_map<GPUBufferHandle, VulkanBuffer> _buffers;
+    std::queue<GPUBufferHandle> _buffersFreeIDs;
 };

@@ -56,7 +56,11 @@ public:
 
 public:
     RGNodeInfo(std::filesystem::path path);
+
+    void SetPathFile(std::filesystem::path path);
+
+    std::string GetName();
     
 private:
-    std::filesystem::path nodeFileName;
+    std::filesystem::path _nodeFileName;
 };

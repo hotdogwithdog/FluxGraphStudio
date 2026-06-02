@@ -8,6 +8,7 @@
 #include "SDL3/SDL_vulkan.h"
 #include "ShaderCompiler/ShaderCompiler.h"
 #include "VkBootstrap.h"
+#include "Assets/AssetsManager.h"
 #include "Editor/Editor.h"
 #include "Graph/NodeParser.h"
 #include "SDL3/SDL_init.h"
@@ -40,13 +41,17 @@ void Renderer::Init(Window* window)
 
     // TODO: remove this is just for testing
     NodeParser::NodeParserResult result = NodeParser::CompileGNodeFile("test.gNode");
-
+    NodeInfoHandle handle;
     if (!result.bSuccess)
     {
         Logger::Log(Logger::LogLevel::Error, result.errorMessage);
     }
-    
-    
+    else
+    {
+        handle = AssetsManager::RegisterNodeInfo(result.nodeInfo);
+    }
+
+    RGNodeInfo* nodeInfo = AssetsManager::GetNodeInfo(handle);
     
     InitDescriptors();
 

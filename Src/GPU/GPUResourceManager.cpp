@@ -1,11 +1,7 @@
 ﻿#include "GPUResourceManager.h"
 
+#include "Utils/AssetsUtils.h"
 #include "Renderer/Renderer.h"
-
-bool IsValid(uint32_t resourceHandle)
-{
-    return resourceHandle != 0;
-}
 
 GPUResourceManager::GPUResourceManager(Renderer* renderer)
 {
@@ -19,39 +15,58 @@ GPUResourceManager::~GPUResourceManager()
 
 GPUImageHandle GPUResourceManager::CreateAndFillImage(TextureLoader::TextureResult* textureData, VkImageUsageFlags usageFlags)
 {
-    auto succed = _images.insert(std::make_pair(_imageNextID, _renderer->CreateAndFillImage(textureData, usageFlags)));
+
+    GPUImageHandle imageHandle;
+    if (!_imagesFreeIDs.empty())
+    {
+        imageHandle = _imagesFreeIDs.front();
+        _imagesFreeIDs.pop();
+    }
+    else
+    {
+        imageHandle = _imageNextID;
+        _imageNextID++;
+    }
+    
+    auto succed = _images.insert(std::make_pair(imageHandle, _renderer->CreateAndFillImage(textureData, usageFlags)));
     if (!succed.second)
     {
         // The code Never should reach here because i just increment the _nextID so if it fails the ID is not unique
         Logger::Log(Logger::LogLevel::Error, "GPUResourceManager::CreateAndFillImage: Failed to Insert GPU image, so the image already exist!");
-        _imageNextID++;
         return 0;
     }
     
-    GPUImageHandle handle = _imageNextID;
-    _imageNextID++;
-    return handle;
+    return imageHandle;
 }
 
 GPUImageHandle GPUResourceManager::CreateImage(VkExtent3D size, VkFormat format, VkImageUsageFlags usageFlags)
 {
+    GPUImageHandle imageHandle;
+    if (!_imagesFreeIDs.empty())
+    {
+        imageHandle = _imagesFreeIDs.front();
+        _imagesFreeIDs.pop();
+    }
+    else
+    {
+        imageHandle = _imageNextID;
+        _imageNextID++;
+    }
+    
     auto succed = _images.insert(std::make_pair(_imageNextID, _renderer->CreateImage(size, format, usageFlags)));
     if (!succed.second)
     {
         // The code Never should reach here because i just increment the _nextID so if it fails the ID is not unique
         Logger::Log(Logger::LogLevel::Error, "GPUResourceManager::CreateImage: Failed to Insert GPU image, so the image already exist");
-        _imageNextID++;
         return 0;
     }
     
-    GPUImageHandle handle = _imageNextID;
-    _imageNextID++;
-    return handle;
+    return imageHandle;
 }
 
 VulkanImage* GPUResourceManager::GetImage(GPUImageHandle imageHandle)
 {
-    if (!IsValid(imageHandle))
+    if (!AssetsUtils::IsValid(imageHandle))
     {
         Logger::Log(Logger::LogLevel::Error, "GPUResourceManager::GetImage: Image handle is invalid");
         return nullptr;
@@ -68,22 +83,31 @@ VulkanImage* GPUResourceManager::GetImage(GPUImageHandle imageHandle)
 
 GPUBufferHandle GPUResourceManager::CreateBuffer(size_t allocSize, VkBufferUsageFlags usageFlags, VmaMemoryUsage memoryUsage)
 {
-    auto succed = _buffers.insert(std::make_pair(_bufferNextID, _renderer->CreateBuffer(allocSize, usageFlags, memoryUsage)));
+    GPUBufferHandle bufferHandle;
+    if (!_imagesFreeIDs.empty())
+    {
+        bufferHandle = _buffersFreeIDs.front();
+        _buffersFreeIDs.pop();
+    }
+    else
+    {
+        bufferHandle = _bufferNextID;
+        _bufferNextID++;
+    }
+    
+    auto succed = _buffers.insert(std::make_pair(bufferHandle, _renderer->CreateBuffer(allocSize, usageFlags, memoryUsage)));
     if (!succed.second)
     {
         Logger::Log(Logger::LogLevel::Error, "GPUResourceManager::CreateBuffer: Failed to Insert GPU Buffer, so the buffer already exist");
-        _bufferNextID++;
         return 0;
     }
-
-    GPUBufferHandle handle = _bufferNextID;
-    _bufferNextID++;
-    return handle;
+    
+    return bufferHandle;
 }
 
 VulkanBuffer* GPUResourceManager::GetBuffer(GPUImageHandle bufferHandle)
 {
-    if (!IsValid(bufferHandle))
+    if (!AssetsUtils::IsValid(bufferHandle))
     {
         Logger::Log(Logger::LogLevel::Error, "GPUResourceManager::GetBuffer: Buffer handle is invalid");
         return nullptr;
@@ -100,7 +124,7 @@ VulkanBuffer* GPUResourceManager::GetBuffer(GPUImageHandle bufferHandle)
 
 void GPUResourceManager::DestroyBuffer(GPUImageHandle bufferHandle)
 {
-    if (!IsValid(bufferHandle))
+    if (!AssetsUtils::IsValid(bufferHandle))
     {
         Logger::Log(Logger::LogLevel::Warning, "GPUResourceManager::DestroyBuffer: Buffer Handle Not Valid");
         return;
@@ -116,6 +140,7 @@ void GPUResourceManager::DestroyBuffer(GPUImageHandle bufferHandle)
     _renderer->DestroyBuffer(buffer);
     
     _buffers.erase(bufferHandle);
+    _buffersFreeIDs.push(bufferHandle);
 }
 
 void GPUResourceManager::ClearAll()
@@ -131,6 +156,11 @@ void GPUResourceManager::ClearImages()
         _renderer->DestroyImage(value);
     }
     _images.clear();
+    const size_t s = _imagesFreeIDs.size();
+    for (size_t i = 0; i < s; i++)
+    {
+        _imagesFreeIDs.pop();
+    }
     _imageNextID = 1;
 }
 
@@ -141,12 +171,17 @@ void GPUResourceManager::ClearBuffers()
         _renderer->DestroyBuffer(value);
     }
     _buffers.clear();
+    const size_t s = _buffersFreeIDs.size();
+    for (size_t i = 0; i < s; i++)
+    {
+        _buffersFreeIDs.pop();
+    }
     _bufferNextID = 1;
 }
 
 void GPUResourceManager::DestroyImage(GPUImageHandle imageHandle)
 {
-    if (!IsValid(imageHandle))
+    if (!AssetsUtils::IsValid(imageHandle))
     {
         Logger::Log(Logger::LogLevel::Warning, "GPUResourceManager::DestroyImage: Imager Handle Not Valid");
         return;
@@ -162,4 +197,5 @@ void GPUResourceManager::DestroyImage(GPUImageHandle imageHandle)
     _renderer->DestroyImage(image);
     
     _images.erase(imageHandle);
+    _imagesFreeIDs.push(imageHandle);
 }
