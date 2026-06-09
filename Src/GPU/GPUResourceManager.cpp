@@ -3,6 +3,12 @@
 #include "Utils/AssetsUtils.h"
 #include "Renderer/Renderer.h"
 
+GPUResourceManager::GPUResourceManager()
+{
+    _renderer = nullptr;
+    Logger::Log(Logger::LogLevel::Error, "Creating Resource Manager without Renderer reference");
+}
+
 GPUResourceManager::GPUResourceManager(Renderer* renderer)
 {
     _renderer = renderer;

@@ -10,14 +10,14 @@
 #include "VkBootstrap.h"
 #include "Assets/AssetsManager.h"
 #include "Editor/Editor.h"
+#include "Graph/DescriptionGraph.h"
+#include "Graph/DescriptionNodeInstance.h"
 #include "Graph/NodeParser.h"
 #include "SDL3/SDL_init.h"
 
 void Renderer::Init(Window* window)
 {
     assert(_bIsInitialized == false);
-
-    _gpuResourceManager = GPUResourceManager(this);
     
     _window = window;
 
@@ -51,7 +51,22 @@ void Renderer::Init(Window* window)
         handle = AssetsManager::RegisterNodeInfo(result.nodeInfo);
     }
 
-    RGNodeInfo* nodeInfo = AssetsManager::GetNodeInfo(handle);
+    DescriptionGraph graph;
+
+    DescriptionNodeInstance nodeInstanceA;
+    nodeInstanceA.nodeInfoHandle = handle;
+    DescriptionNodeInstance nodeInstanceB;
+    nodeInstanceB.nodeInfoHandle = handle;
+
+    DescriptionNodeInstanceHandle nodeA = graph.AddNodeInstance(nodeInstanceA);
+    DescriptionNodeInstanceHandle nodeB =graph.AddNodeInstance(nodeInstanceB);
+
+    graph.ConnectNodes(nodeA, 0, nodeB, 0);
+    
+    graph.MarkNodeAsStart(nodeA, 0);
+
+    auto compiledGraph = graph.CompileGraph();
+    
     
     InitDescriptors();
 

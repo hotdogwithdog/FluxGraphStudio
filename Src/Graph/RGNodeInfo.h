@@ -4,6 +4,10 @@
 #include <string>
 #include <vector>
 
+#include "NodesResourceManager.h"
+#include "Assets/AssetsManager.h"
+#include "Utils/AssetsUtils.h"
+
 namespace Graph
 {
     enum class EShaderParameterType
@@ -19,6 +23,7 @@ namespace Graph
     };
 
     EShaderParameterType CastStringToShaderParameterType(const std::string& str);
+    std::string CastShaderParameterTypeToString(const EShaderParameterType& type);
 
     enum class EImageFormat
     {
@@ -32,12 +37,41 @@ namespace Graph
     };
 
     EImageFormat CastStringToImageFormat(const std::string& str);
+    std::string CastImageFormatToString(const EImageFormat& format);
 
     struct ShaderParameter
     {
         EShaderParameterType type;
         EImageFormat format;
         std::string name;
+    };
+
+
+    struct ConnectionInfo
+    {
+        DescriptionNodeInstanceHandle originNodeInstance = 0;
+        int originIndex = -1;
+        DescriptionNodeInstanceHandle destinationNodeInstance = 0;
+        int destinationIndex = -1;
+        bool bIsStart = false;
+        bool bIsEnd = false;
+        
+        bool IsValid() const
+        {
+            if (bIsStart && bIsEnd) return false;
+            if (bIsStart) return AssetsUtils::IsValid(destinationNodeInstance) && destinationIndex >= 0;
+            if (bIsEnd) return AssetsUtils::IsValid(originNodeInstance) && originIndex >= 0;
+            
+            return AssetsUtils::IsValid(originNodeInstance) && originIndex >= 0 && AssetsUtils::IsValid(destinationNodeInstance) && destinationIndex >= 0;
+        }
+
+        std::string ToString() const
+        {
+            std::ostringstream out;
+            out << "origin: {" << originNodeInstance << ", " << originIndex <<
+                "}, destination: {" << destinationNodeInstance << ", " << destinationIndex << "}, isStart = " << bIsStart << ", isEnd = " << bIsEnd << std::endl;
+            return out.str();
+        }
     };
 }
 
@@ -56,6 +90,7 @@ public:
 
 public:
     RGNodeInfo(std::filesystem::path path);
+    RGNodeInfo(const RGNodeInfo& other);
 
     void SetPathFile(std::filesystem::path path);
 

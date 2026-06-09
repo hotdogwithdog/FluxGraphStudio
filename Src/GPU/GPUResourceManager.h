@@ -23,7 +23,7 @@ using GPUBufferHandle = uint32_t;
 class GPUResourceManager
 {
 public:
-    GPUResourceManager() = default;
+    GPUResourceManager();
     GPUResourceManager(Renderer* renderer);
     ~GPUResourceManager();
 

@@ -12,6 +12,21 @@ Graph::EShaderParameterType Graph::CastStringToShaderParameterType(const std::st
     return Graph::EShaderParameterType::None;
 }
 
+std::string Graph::CastShaderParameterTypeToString(const EShaderParameterType& type)
+{
+    switch (type)
+    {
+        case EShaderParameterType::Float: return "Float";
+        case EShaderParameterType::Int: return "Int";
+        case EShaderParameterType::Image: return "Image";
+        case EShaderParameterType::Vec2: return "Vec2";
+        case EShaderParameterType::Vec3: return "Vec3";
+        case EShaderParameterType::Vec4: return "Vec4";
+        case EShaderParameterType::IVec2: return "IVec2";
+        default: return "None";
+    }
+}
+
 Graph::EImageFormat Graph::CastStringToImageFormat(const std::string& str)
 {
     if (str == "RGBA16F") return Graph::EImageFormat::RGBA16F;
@@ -23,9 +38,43 @@ Graph::EImageFormat Graph::CastStringToImageFormat(const std::string& str)
     return Graph::EImageFormat::None;
 }
 
+std::string Graph::CastImageFormatToString(const EImageFormat& format)
+{
+    switch (format)
+    {
+        case EImageFormat::RGBA16F: return "RGBA16F";
+        case EImageFormat::RGBA32F: return "RGBA32F";
+        case EImageFormat::RGBA8: return "RGBA8";
+        case EImageFormat::R8: return "R8";
+        case EImageFormat::R16F: return "R16F";
+        case EImageFormat::RG16F: return "RG16F";
+        default: return "None";
+    }
+}
+
 RGNodeInfo::RGNodeInfo(std::filesystem::path path)
 {
     SetPathFile(path);
+}
+
+RGNodeInfo::RGNodeInfo(const RGNodeInfo& other)
+{
+    _nodeFileName = other._nodeFileName;
+    inputs.reserve(other.inputs.size());
+    for (Graph::ShaderParameter parameter : other.inputs)
+    {
+        inputs.push_back(parameter);
+    }
+    uniforms.reserve(other.uniforms.size());
+    for (Graph::ShaderParameter parameter : other.uniforms)
+    {
+        uniforms.push_back(parameter);
+    }
+    outputs.reserve(other.outputs.size());
+    for (Graph::ShaderParameter parameter : other.outputs)
+    {
+        outputs.push_back(parameter);
+    }
 }
 
 void RGNodeInfo::SetPathFile(std::filesystem::path path)

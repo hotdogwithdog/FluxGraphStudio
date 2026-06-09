@@ -2,18 +2,19 @@
 
 #include <queue>
 
+#include "Graph/RGNode.h"
+#include "Graph/RGNodeInfo.h"
 #include "Logger/Logger.h"
 #include "Utils/AssetsUtils.h"
 
 namespace AssetsManager
 {
     NodeInfoHandle _nodeInfoNextID = 1;
-
     std::unordered_map<NodeInfoHandle, RGNodeInfo> _nodesInfos;
     std::queue<NodeInfoHandle> _nodesInfosFreeIDs;
 }
 
-NodeInfoHandle AssetsManager::RegisterNodeInfo(RGNodeInfo nodeInfo)
+NodeInfoHandle AssetsManager::RegisterNodeInfo(RGNodeInfo& nodeInfo)
 {
     NodeInfoHandle nodeInfoHandle;
     if (!_nodesInfosFreeIDs.empty())
@@ -27,7 +28,7 @@ NodeInfoHandle AssetsManager::RegisterNodeInfo(RGNodeInfo nodeInfo)
         _nodeInfoNextID++;
     }
     
-    auto suceess = _nodesInfos.insert(std::make_pair(nodeInfoHandle, nodeInfo));
+    auto suceess = _nodesInfos.emplace(nodeInfoHandle, nodeInfo);
 
     if (!suceess.second)
     {

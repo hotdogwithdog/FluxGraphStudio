@@ -54,7 +54,7 @@ private:
 
     Window* _window;
 
-    GPUResourceManager _gpuResourceManager;
+    GPUResourceManager _gpuResourceManager = GPUResourceManager(this);
     
     VulkanContext _vulkanContext;
     VulkanQueue _mainQueue;

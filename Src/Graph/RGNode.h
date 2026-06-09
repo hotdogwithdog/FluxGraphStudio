@@ -15,9 +15,5 @@ private:
     
 public:
     RGNode(NodeInfoHandle nodeInfoHandle);
-
-
-    // Execute the Pass of the Node
-    void Execute(VulkanContext& ctx, VkCommandBuffer& cmd);
     
 };
