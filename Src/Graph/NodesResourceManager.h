@@ -3,7 +3,6 @@
 
 struct DescriptionNodeInstance;
 
-using RGNodeHandle = uint32_t;
 using NodeInstanceHandle = uint32_t;
 using DescriptionNodeInstanceHandle = uint32_t;
 

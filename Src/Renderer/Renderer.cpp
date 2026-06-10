@@ -59,7 +59,7 @@ void Renderer::Init(Window* window)
     nodeInstanceB.nodeInfoHandle = handle;
 
     DescriptionNodeInstanceHandle nodeA = graph.AddNodeInstance(nodeInstanceA);
-    DescriptionNodeInstanceHandle nodeB =graph.AddNodeInstance(nodeInstanceB);
+    DescriptionNodeInstanceHandle nodeB = graph.AddNodeInstance(nodeInstanceB);
 
     graph.ConnectNodes(nodeA, 0, nodeB, 0);
     

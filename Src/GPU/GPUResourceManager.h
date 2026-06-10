@@ -5,6 +5,8 @@
 #include "GPUTypes.h"
 
 
+class RGNodeInfo;
+
 namespace TextureLoader
 {
     struct TextureResult;
@@ -15,6 +17,7 @@ class Renderer;
 
 using GPUImageHandle = uint32_t;
 using GPUBufferHandle = uint32_t;
+using RGNodeHandle = uint32_t;
 
 // This manager is for the resources that will live between frames like the uniform buffers and images that will be uploaded to a pass that a node has
 // Note that if an image or buffer is Created with this manager it needs to be free also with this manager Destroy functions (for clean the resource map)
@@ -35,6 +38,8 @@ public:
     GPUBufferHandle CreateBuffer(size_t allocSize, VkBufferUsageFlags usageFlags, VmaMemoryUsage memoryUsage);
     VulkanBuffer* GetBuffer(GPUImageHandle bufferHandle);
     void DestroyBuffer(GPUImageHandle bufferHandle);
+
+    RGNodeHandle CreateRGNode(RGNodeInfo* nodeInfo, )
     
     void ClearAll();
     void ClearImages();

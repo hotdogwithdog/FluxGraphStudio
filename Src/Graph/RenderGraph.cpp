@@ -13,3 +13,13 @@ RenderGraph::RenderGraph(GPUResourceManager* resourceManager)
     _resourceManager = resourceManager;
     _texturePool = TexturePool(_resourceManager);
 }
+
+void RenderGraph::LoadCompiledGraph(std::vector<DescriptionNodeInstanceHandle>& nodes)
+{
+    
+}
+
+void RenderGraph::Render(VkCommandBuffer& cmd, const VulkanContext& context, VmaAllocator& allocator, const VulkanImage& sourceImage)
+{
+    
+}
