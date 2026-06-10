@@ -32,11 +32,28 @@ NodeInfoHandle AssetsManager::RegisterNodeInfo(RGNodeInfo& nodeInfo)
 
     if (!suceess.second)
     {
-        Logger::Log(Logger::LogLevel::Warning, std::format("AssetsManager::RegisterNodeInfo: The nodeInfo of name {}, failed to be inserted to the map", nodeInfo.GetName()));
+        Logger::Log(Logger::LogLevel::Warning, std::format("AssetsManager::RegisterNodeInfo: The nodeInfo of name {}, failed to be inserted to the map", nodeInfo.name));
         return 0;
     }
     
     return nodeInfoHandle;
+}
+
+void AssetsManager::RefreshNodeInfo(const NodeInfoHandle& handle, RGNodeInfo& nodeInfo)
+{
+    if (!AssetsUtils::IsValid(handle))
+    {
+        Logger::Log(Logger::LogLevel::Error, "AssetsManager::RefreshNodeInfo: Node info handle is invalid");
+        return;
+    }
+
+    if (!_nodesInfos.contains(handle))
+    {
+        Logger::Log(Logger::LogLevel::Error, std::format("AssetsManager::RefreshNodeInfo: Node info with handle = {}; not found", handle));
+        return;
+    }
+
+    _nodesInfos[handle] = nodeInfo;
 }
 
 RGNodeInfo* AssetsManager::GetNodeInfo(const NodeInfoHandle& nodeInfoHandle)

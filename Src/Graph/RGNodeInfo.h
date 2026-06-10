@@ -83,19 +83,14 @@ class RGNodeInfo
 {
 public:
     RGNodeInfo() = default;
+    RGNodeInfo(const RGNodeInfo& other);
+
+    std::string name;
+    std::string sourceCode;
+    uint32_t version = 1;
+    uint64_t hash;
     
     std::vector<Graph::ShaderParameter> inputs;
     std::vector<Graph::ShaderParameter> outputs;
     std::vector<Graph::ShaderParameter> uniforms;
-
-public:
-    RGNodeInfo(std::filesystem::path path);
-    RGNodeInfo(const RGNodeInfo& other);
-
-    void SetPathFile(std::filesystem::path path);
-
-    std::string GetName();
-    
-private:
-    std::filesystem::path _nodeFileName;
 };

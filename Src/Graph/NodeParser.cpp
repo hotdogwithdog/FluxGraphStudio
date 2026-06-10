@@ -21,10 +21,10 @@ void ParseInput(NodeParser::NodeParserResult& result, std::string& line, std::st
 void ParseOutput(NodeParser::NodeParserResult& result, std::string& line, std::string totalPath, int currentLine);
 void ParseUniform(NodeParser::NodeParserResult& result, std::string& line, std::string totalPath, int currentLine);
 
-NodeParser::NodeParserResult NodeParser::CompileGNodeFile(std::filesystem::path path)
+NodeParser::NodeParserResult NodeParser::ParseGNodeFile(std::filesystem::path path)
 {
     NodeParserResult result = {};
-    result.nodeInfo.SetPathFile(path);
+    result.nodeInfo.name = path.filename().string();
     result.bSuccess = true;
     result.errorMessage = "";
     if (path.extension() != ".gNode")
@@ -129,7 +129,7 @@ NodeParser::NodeParserResult NodeParser::CompileGNodeFile(std::filesystem::path 
 
     fileData[shaderSize] = '\0';
 
-    result.compilationResult = ShaderCompiler::CompileGlslCodeIntoSpirV(fileData, ShaderCompiler::ShaderStage::Compute);
+    result.nodeInfo.sourceCode = fileData;
     delete[] fileData;
     return result;
 }

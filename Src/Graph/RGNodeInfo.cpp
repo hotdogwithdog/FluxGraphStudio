@@ -52,14 +52,13 @@ std::string Graph::CastImageFormatToString(const EImageFormat& format)
     }
 }
 
-RGNodeInfo::RGNodeInfo(std::filesystem::path path)
-{
-    SetPathFile(path);
-}
-
 RGNodeInfo::RGNodeInfo(const RGNodeInfo& other)
 {
-    _nodeFileName = other._nodeFileName;
+    name = other.name;
+    sourceCode = other.sourceCode;
+    version = other.version;
+    hash = other.hash;
+    
     inputs.reserve(other.inputs.size());
     for (Graph::ShaderParameter parameter : other.inputs)
     {
@@ -75,14 +74,4 @@ RGNodeInfo::RGNodeInfo(const RGNodeInfo& other)
     {
         outputs.push_back(parameter);
     }
-}
-
-void RGNodeInfo::SetPathFile(std::filesystem::path path)
-{
-    _nodeFileName = path;
-}
-
-std::string RGNodeInfo::GetName()
-{
-    return _nodeFileName.filename().string();
 }

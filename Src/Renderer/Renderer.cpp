@@ -40,7 +40,7 @@ void Renderer::Init(Window* window)
     InitSourceImage();
 
     // TODO: remove this is just for testing
-    NodeParser::NodeParserResult result = NodeParser::CompileGNodeFile("test.gNode");
+    NodeParser::NodeParserResult result = NodeParser::ParseGNodeFile("test.gNode");
     NodeInfoHandle handle;
     if (!result.bSuccess)
     {
@@ -51,8 +51,9 @@ void Renderer::Init(Window* window)
         handle = AssetsManager::RegisterNodeInfo(result.nodeInfo);
     }
 
+    
+    
     DescriptionGraph graph;
-
     DescriptionNodeInstance nodeInstanceA;
     nodeInstanceA.nodeInfoHandle = handle;
     DescriptionNodeInstance nodeInstanceB;

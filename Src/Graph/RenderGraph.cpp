@@ -19,7 +19,7 @@ void RenderGraph::LoadCompiledGraph(std::vector<DescriptionNodeInstanceHandle>& 
     
 }
 
-void RenderGraph::Render(VkCommandBuffer& cmd, const VulkanContext& context, VmaAllocator& allocator, const VulkanImage& sourceImage)
+void RenderGraph::Render(VkCommandBuffer& cmd, const VulkanContext& context, VmaAllocator& allocator, const VulkanImage& sourceImage, const VulkanImage& previewImage)
 {
     
 }

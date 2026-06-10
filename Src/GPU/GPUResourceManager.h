@@ -39,13 +39,14 @@ public:
     VulkanBuffer* GetBuffer(GPUImageHandle bufferHandle);
     void DestroyBuffer(GPUImageHandle bufferHandle);
 
-    RGNodeHandle CreateRGNode(RGNodeInfo* nodeInfo, )
+    
     
     void ClearAll();
     void ClearImages();
     void ClearBuffers();
 
 private:
+    // TODO: Change this reference to the renderer, to a reference to the resources that are needed: vulkanContext, allocator
     Renderer* _renderer;
 
     GPUImageHandle _imageNextID = 1;

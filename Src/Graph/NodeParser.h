@@ -12,10 +12,9 @@ namespace NodeParser
         bool bSuccess;
         std::string errorMessage;
         RGNodeInfo nodeInfo;
-        ShaderCompiler::ShaderCompilationResult compilationResult;
     };
 
-    NodeParserResult CompileGNodeFile(std::filesystem::path path);
+    NodeParserResult ParseGNodeFile(std::filesystem::path path);
 
     
 }
