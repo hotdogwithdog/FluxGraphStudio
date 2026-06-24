@@ -20,9 +20,9 @@ namespace ShaderCompiler
         std::string errorMessage;
     };
 
-    void InitGlslCompiler();
+    void Init();
 
-    void ShutdownGlslCompiler();
+    void Shutdown();
 
 
     /// The Compiler must be initialized

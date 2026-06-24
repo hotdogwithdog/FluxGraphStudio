@@ -113,7 +113,7 @@ NodeParser::NodeParserResult NodeParser::ParseGNodeFile(std::filesystem::path pa
 
     // Get the Shader code // The pointer on the file is advanced to the start of the shader
 
-    
+    // TODO: put a check for destroy the #version line if found (or store on the info for use that version instead of the generated more in advance)
     size_t shaderStart = file.tellg();
     file.seekg(0, std::ios::end);
     size_t shaderEnd = file.tellg();

@@ -5,10 +5,15 @@
 #include <format>
 #include <fstream>
 
+#include "FGSIncluder.h"
 #include "glslang/MachineIndependent/localintermediate.h"
 #include "glslang/Public/ShaderLang.h"
 #include "SPIRV/GlslangToSpv.h"
 
+namespace ShaderCompiler
+{
+    FGSIncluder* _includer = nullptr;
+}
 
 EShLanguage CastShaderStageToGlslangType(const ShaderCompiler::ShaderStage& stage)
 {
@@ -24,15 +29,21 @@ EShLanguage CastShaderStageToGlslangType(const ShaderCompiler::ShaderStage& stag
 }
 
 
-void ShaderCompiler::InitGlslCompiler()
+void ShaderCompiler::Init()
 {
     glslang::InitializeProcess();
+
+    if (_includer == nullptr) _includer = new FGSIncluder();
+    else Logger::Log(Logger::LogLevel::Warning, "ShaderCompiler::Init: The FGSIncluder has been previously initialized, using that instead of create another");
+    
     Logger::Log(Logger::LogLevel::Info, std::format("Shader Compiler Initialized, max version of glsl: [{}]", glslang::GetGlslVersionString()));
 }
 
-void ShaderCompiler::ShutdownGlslCompiler()
+void ShaderCompiler::Shutdown()
 {
     glslang::FinalizeProcess();
+
+    delete _includer;
 }
 
 /// filePath is from the Shaders folder
@@ -93,7 +104,8 @@ ShaderCompiler::ShaderCompilationResult ShaderCompiler::CompileGlslCodeIntoSpirV
         GetDefaultResources(),
         100,
         false,
-        EShMsgDefault
+        EShMsgDefault,
+        *_includer
     );
 
     Logger::Log(Logger::LogLevel::Info, std::format("Parsing shader: {}", shader.getInfoLog()));

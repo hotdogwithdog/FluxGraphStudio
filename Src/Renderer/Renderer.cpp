@@ -39,6 +39,8 @@ void Renderer::Init(Window* window)
 
     InitSourceImage();
 
+    _renderGraph = RenderGraph(&_gpuResourceManager, &_vulkanContext);
+
     // TODO: remove this is just for testing
     NodeParser::NodeParserResult result = NodeParser::ParseGNodeFile("test.gNode");
     NodeInfoHandle handle;
@@ -71,11 +73,14 @@ void Renderer::Init(Window* window)
     
     InitDescriptors();
 
-    ShaderCompiler::InitGlslCompiler();
+    ShaderCompiler::Init();
 
     InitPipelines();
 
     InitImGui();
+
+    // TODO: Remove this just for testing
+    _renderGraph.Test(handle);
     
     _sourceImage.ID = (ImTextureID)ImGui_ImplVulkan_AddTexture(_defaultSamplerLinear, _sourceImage.resource.imageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     _previewImage.ID = (ImTextureID)ImGui_ImplVulkan_AddTexture(_defaultSamplerLinear, _previewImage.resource.imageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -97,7 +102,7 @@ void Renderer::CleanUp()
 {
     if (!_bIsInitialized) return;
 
-    ShaderCompiler::ShutdownGlslCompiler();
+    ShaderCompiler::Shutdown();
 
     
 }

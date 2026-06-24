@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "NodeLibrary.h"
 #include "NodesResourceManager.h"
 #include "TexturePool.h"
 
@@ -12,17 +13,19 @@ public:
 
 public:
     RenderGraph();
-    RenderGraph(GPUResourceManager* resourceManager);
+    RenderGraph(GPUResourceManager* resourceManager, VulkanContext* vulkanContext);
     ~RenderGraph() = default;
 
     void LoadCompiledGraph(std::vector<DescriptionNodeInstanceHandle>& nodes);
 
     void Render(VkCommandBuffer& cmd, const VulkanContext& context, VmaAllocator& allocator, const VulkanImage& sourceImage, const VulkanImage& previewImage);
+
+    void Test(NodeInfoHandle handle); 
     
 private:
     GPUResourceManager* _resourceManager;
-
     TexturePool _texturePool;
+    NodeLibrary _nodeLibrary;
 
     std::vector<RenderCommand*> _renderCommands;
 };

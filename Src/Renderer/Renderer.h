@@ -6,6 +6,7 @@
 #include "GPU/GPUResourceManager.h"
 #include "GPU/VkTypes.h"
 #include "GPU/GPUTypes.h"
+#include "Graph/RenderGraph.h"
 
 
 namespace TextureLoader
@@ -55,6 +56,7 @@ private:
     Window* _window;
 
     GPUResourceManager _gpuResourceManager = GPUResourceManager(this);
+    RenderGraph _renderGraph;
     
     VulkanContext _vulkanContext;
     VulkanQueue _mainQueue;

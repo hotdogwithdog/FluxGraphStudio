@@ -6,14 +6,14 @@
 // This class is the Node pass class itself, so it has the logic for his execution
 class RGNode
 {
-private:
-    // Node for conections
-    NodeInfoHandle _nodeInfoHandle;
+public:
+    NodeInfoHandle nodeInfoHandle;
+    uint32_t version = 1;
     
-    VulkanPipeline _pipeline;
-    VkDescriptorSetLayout _descriptorSetLayout;
+    VulkanPipeline pipeline;
+    VkDescriptorSetLayout descriptorSetLayout;
     
 public:
-    RGNode(NodeInfoHandle nodeInfoHandle);
-    
+    RGNode();
+    RGNode(NodeInfoHandle nodeInfoHandle, uint32_t version);
 };
