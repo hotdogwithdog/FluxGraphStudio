@@ -10,31 +10,16 @@ RGBA16F outputImage
 
 
 @shader
-#version 460
-
-layout (local_size_x = 16, local_size_y = 16) in;
-
-// Common descriptor set
-layout(set = 0, binding = 0) uniform UniformBuffer
-{
-    vec2 outputSize;
-    vec2 inputTexSize;
-} Common;
-
-// private descriptor set
-layout(rgba16f,set = 1, binding = 0) uniform image2D image;
-layout(set = 1, binding = 1) uniform sampler2D inputTex;
-        
 void main()
 {
     ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
 
-    if(pixelCoord.x < Common.outputSize.x && pixelCoord.y < Common.outputSize.y)
+    if(pixelCoord.x < UB.outputImage_Size.x && pixelCoord.y < UB.outputImage_Size.y)
     {
-        vec2 UV = vec2(pixelCoord) / Common.outputSize;
+        vec2 UV = vec2(pixelCoord) / UB.outputImage_Size;
 
         vec3 color = texture(inputTex, UV).xyz;
         color = mix(color, vec3(1.0, 0.0, 0.0), 0.2);
-        imageStore(image, pixelCoord, vec4(color, 1.0));
+        imageStore(outputImage, pixelCoord, vec4(color, 1.0));
     }
 }

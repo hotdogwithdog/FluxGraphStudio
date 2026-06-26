@@ -240,18 +240,18 @@ void RGNodeInfo::FillDescriptorSetLayoutBuilder(Descriptors::DescriptorLayoutBui
     imageMetadataNames.reserve(imageCount);
     for (size_t i = 0; i < inputs.size(); ++i)
     {
-        imageMetadataNames.push_back(inputs[i].name + "_size");
+        imageMetadataNames.push_back(inputs[i].name + "_Size");
     }
     for (size_t i = 0; i < uniforms.size(); ++i)
     {
         if (uniforms[i].type == Graph::EShaderParameterType::Image)
         {
-            imageMetadataNames.push_back(uniforms[i].name + "_size");
+            imageMetadataNames.push_back(uniforms[i].name + "_Size");
         }
     }
     for (size_t i = 0; i < outputs.size(); ++i)
     {
-        imageMetadataNames.push_back(outputs[i].name + "_size");
+        imageMetadataNames.push_back(outputs[i].name + "_Size");
     }
     
 
@@ -331,10 +331,10 @@ bool RGNodeInfo::GenerateFinalCode()
 
     finalCode.clear();
     finalCode.reserve(sourceCode.size()); // At least this will be allocated so use less space
-    finalCode += "#version 460\n\n";
+    finalCode += "#version 460\n";
     finalCode += GenerateBindings();
-    finalCode += "#include <FGSCommons.glsl>\n\n";
-    finalCode += "#line 1 \"UserShader\"\n\n";
+    finalCode += "\n#include <FGSCommons.glsl>\n";
+    finalCode += "\n#line 1 \"UserShader\"\n";
     finalCode += sourceCode;
     return true;
 }

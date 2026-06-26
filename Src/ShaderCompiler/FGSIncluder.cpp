@@ -1,45 +1,31 @@
 ﻿#include "FGSIncluder.h"
 
-#include <fstream>
-
 #include "Logger/Logger.h"
+#include "Utils/FileUtils.h"
 
 glslang::TShader::Includer::IncludeResult* FGSIncluder::includeSystem(const char* headerName, const char* includeName, size_t inclusionDepth)
 {
     std::string totalFilePath = ASSETS_DIR "Shaders/";
     totalFilePath += headerName;
 
-    std::ifstream file(totalFilePath, std::ifstream::ate | std::ifstream::binary); // is ifstream so always is in "in" mode and ate is "at end"
-
-    if (!file.is_open())
-    {
-        Logger::Log(Logger::LogLevel::Error, std::format("Failed to open file: [{}]", totalFilePath));
-        return nullptr;
-    }
-
-    size_t fileSize = file.tellg();
-
-    char* fileData = new char[fileSize + 1]; // Space for the \0
+    char* fileData = nullptr;
+    size_t fileSize;
+    FileUtils::ReadFile(totalFilePath, &fileData, fileSize);
+    // Note that the readFile function reserve size for the fileData variable so in this case must clear it in the releaseInclude function
+    // no need to store the references because glslang will pass the result that have this data when is ready for be cleared so just clear both the data and the result on the release method
     
-    file.seekg(0, std::ifstream::beg);
-
-    file.read(fileData, fileSize);
-
-    file.close();
-
-    fileData[fileSize] = '\0';
-    
-    return new IncludeResult(totalFilePath, fileData, sizeof(char) * (fileSize + 1), nullptr);
+    return new IncludeResult(totalFilePath, fileData, sizeof(char) * (fileSize - 1), nullptr);
 }
 
 glslang::TShader::Includer::IncludeResult* FGSIncluder::includeLocal(const char* string, const char* text, size_t size)
 {
-    // TODO: Implement this if want local paths
+    // TODO: Implement this if want local paths / when this return nullptr for his failure or not implementation calls the includeSystem method automatically
     return nullptr;
 }
 
 void FGSIncluder::releaseInclude(IncludeResult* result)
 {
-    delete result->headerData;
+    if (result == nullptr) return;
+    delete[] result->headerData;
     delete result;
 }

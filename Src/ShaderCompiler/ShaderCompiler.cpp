@@ -1,14 +1,13 @@
 ﻿#include "ShaderCompiler.h"
 
-#include "Logger/Logger.h"
-#include "glslang/Public/ResourceLimits.h"
-#include <format>
-#include <fstream>
-
 #include "FGSIncluder.h"
-#include "glslang/MachineIndependent/localintermediate.h"
-#include "glslang/Public/ShaderLang.h"
+#include "Logger/Logger.h"
 #include "SPIRV/GlslangToSpv.h"
+#include "Utils/FileUtils.h"
+#include "glslang/MachineIndependent/localintermediate.h"
+#include "glslang/Public/ResourceLimits.h"
+#include "glslang/Public/ShaderLang.h"
+#include <format>
 
 namespace ShaderCompiler
 {
@@ -51,30 +50,10 @@ ShaderCompiler::ShaderCompilationResult ShaderCompiler::CompileGlslFileIntoSpirV
 {
     // Read the code from file
     std::string totalFilePath = ASSETS_DIR "Shaders/" + filePath;
-
-    auto indexOfLastSlash = filePath.find_last_of('/');
-    indexOfLastSlash = indexOfLastSlash == std::string::npos ? 0 : indexOfLastSlash + 1;
-    std::string fileName = filePath.substr(indexOfLastSlash, filePath.size() - indexOfLastSlash);
     
-    std::ifstream file(totalFilePath, std::ifstream::ate | std::ifstream::binary); // is ifstream so always is in "in" mode and ate is "at end"
-
-    if (!file.is_open())
-    {
-        Logger::Log(Logger::LogLevel::Error, std::format("Failed to open file: [{}]", filePath));
-        return ShaderCompiler::ShaderCompilationResult{.bSuccess = false, .errorMessage = (std::format("Failed to open file: [{}]", filePath)) };
-    }
-
-    size_t fileSize = file.tellg();
-
-    char* fileData = new char[fileSize + 1]; // Space for the \0
-    
-    file.seekg(0, std::ifstream::beg);
-
-    file.read(fileData, fileSize);
-
-    file.close();
-
-    fileData[fileSize] = '\0'; // This is because glslang setStrings expects the strings to finish if not it reads trash until parse fail
+    char* fileData = nullptr;
+    size_t fileSize;
+    FileUtils::ReadFile(totalFilePath, &fileData, fileSize);
     
     // Compile
     ShaderCompiler::ShaderCompilationResult result = CompileGlslCodeIntoSpirV(fileData, stage);
@@ -90,6 +69,8 @@ ShaderCompiler::ShaderCompilationResult ShaderCompiler::CompileGlslCodeIntoSpirV
     
     EShLanguage shStage = CastShaderStageToGlslangType(stage);
     glslang::TShader shader(shStage);
+
+    shader.setPreamble("#extension GL_GOOGLE_include_directive : require\n");
 
     // Must be passed like this because the SetStrings is a const char* const*
     const char* shaderCode = source.c_str();
