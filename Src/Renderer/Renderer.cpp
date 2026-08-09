@@ -39,7 +39,15 @@ void Renderer::Init(Window* window)
 
     InitSourceImage();
 
-    _renderGraph = RenderGraph(&_gpuResourceManager, &_vulkanContext);
+    InitDescriptors();
+
+    ShaderCompiler::Init();
+
+    InitPipelines();
+
+    InitImGui();
+
+    _renderGraph = RenderGraph(&_gpuResourceManager, &_vulkanContext, _commonDescriptorSetLayout);
 
     // TODO: remove this is just for testing
     NodeParser::NodeParserResult result = NodeParser::ParseGNodeFile("test.gNode");
@@ -67,17 +75,12 @@ void Renderer::Init(Window* window)
     graph.ConnectNodes(nodeA, 0, nodeB, 0);
     
     graph.MarkNodeAsStart(nodeA, 0);
+    graph.MarkNodeAsEnd(nodeB, 0);
 
-    auto compiledGraph = graph.CompileGraph();
+    CompiledGraph compiledGraph = graph.CompileGraph();
     
     
-    InitDescriptors();
-
-    ShaderCompiler::Init();
-
-    InitPipelines();
-
-    InitImGui();
+    
 
     // TODO: Remove this just for testing
     _renderGraph.Test(handle);

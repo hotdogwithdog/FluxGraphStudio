@@ -10,7 +10,7 @@ class NodeLibrary
 {
 public:
     NodeLibrary() = default;
-    NodeLibrary(VulkanContext* vulkanContext);
+    NodeLibrary(VulkanContext* vulkanContext, VkDescriptorSetLayout commonDescriptorSetLayout);
 
     RGNode* GetNodeFromDescription(DescriptionNodeInstanceHandle handle);
     RGNode* GetNodeFromInfo(NodeInfoHandle handle);
@@ -18,6 +18,8 @@ public:
     
 private:
     VulkanContext* _vulkanContext;
+
+    VkDescriptorSetLayout _commonDescriptorSetLayout;
 
     std::unordered_map<NodeInfoHandle, RGNode> _nodes;
 

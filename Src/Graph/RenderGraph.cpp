@@ -4,15 +4,14 @@
 
 RenderGraph::RenderGraph()
 {
-    Logger::Log(Logger::LogLevel::Error, "Render Graph created without resourceManager");
     _resourceManager = nullptr;
 }
 
-RenderGraph::RenderGraph(GPUResourceManager* resourceManager, VulkanContext* vulkanContext)
+RenderGraph::RenderGraph(GPUResourceManager* resourceManager, VulkanContext* vulkanContext, VkDescriptorSetLayout commonDescriptorSetLayout)
 {
     _resourceManager = resourceManager;
     _texturePool = TexturePool(_resourceManager);
-    _nodeLibrary = NodeLibrary(vulkanContext);
+    _nodeLibrary = NodeLibrary(vulkanContext, commonDescriptorSetLayout);
 }
 
 void RenderGraph::LoadCompiledGraph(std::vector<DescriptionNodeInstanceHandle>& nodes)
@@ -20,7 +19,7 @@ void RenderGraph::LoadCompiledGraph(std::vector<DescriptionNodeInstanceHandle>& 
     
 }
 
-void RenderGraph::Render(VkCommandBuffer& cmd, const VulkanContext& context, VmaAllocator& allocator, const VulkanImage& sourceImage, const VulkanImage& previewImage)
+void RenderGraph::Render(const VkCommandBuffer& cmd, const VulkanContext& context, VmaAllocator& allocator, const VulkanImage& sourceImage, const VulkanImage& previewImage)
 {
     
 }

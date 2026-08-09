@@ -314,7 +314,7 @@ std::string RGNodeInfo::GenerateBindings() const
             Logger::Log(Logger::LogLevel::Warning, std::format("RGNodeInfo::GenerateBindings: The order of the outputs bindings do not match with the order of the outputs parsed, skipping this index: {}", i));
             continue;
         }
-        generatedBindings << "layout(" << Graph::CastImageFormatToGlslFormatString(outputs[i].format) << ", set = 1, binding = " <<
+        generatedBindings << "layout(" << Graph::CastImageFormatToGlslFormatString(outputs[i].textureDesc.format) << ", set = 1, binding = " <<
             _parameterBindingLayout.outputBindings[i].binding << ") uniform " <<
             Graph::CastShaderParameterTypeToGlslTypeString(_parameterBindingLayout.outputBindings[i].type, true) <<
                 " " << _parameterBindingLayout.outputBindings[i].name << ";\n";

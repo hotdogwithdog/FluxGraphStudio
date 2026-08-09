@@ -14,39 +14,24 @@ class GPUResourceManager;
 class TexturePool
 {
 public:
-    struct PooleableTexture
-    {
-    private:
-        GPUImageHandle _textureHandle;
-
-        friend class TexturePool;
-    public:
-        VulkanImage* texture;
-        
-        PooleableTexture(GPUImageHandle textureHandle)
-        {
-            _textureHandle = textureHandle;
-        }
-    };
-
-    
-public:
     TexturePool();
     TexturePool(GPUResourceManager* resourceManager);
     ~TexturePool() = default;
-
-    // The size will be the inputImageSize for all of them and the usageFlags will be the same for all of them
-    void CreateTexture(VkExtent3D size, Graph::EImageFormat format, VkImageUsageFlags usageFlags);
-
-    PooleableTexture GetTexture(Graph::EImageFormat format);
-    void ReleaseTexture(PooleableTexture texture);
+    
+    GPUImageHandle GetTexture(Graph::TextureDesc textureDesc);
+    void ReleaseTexture(GPUImageHandle textureHandle);
 
     void ClearPools();
 
 private:
+    GPUImageHandle CreateTexture(Graph::TextureDesc textureDesc);
+
+private:
     GPUResourceManager* _resourceManager;
     
-    std::unordered_map<Graph::EImageFormat, std::queue<PooleableTexture>> _texturePools;
+    std::unordered_map<Graph::TextureDesc, std::queue<GPUImageHandle>> _texturePools;
+
+    std::unordered_map<GPUImageHandle, Graph::TextureDesc> _textureDescsByHandle;
 
     std::unordered_set<GPUImageHandle> _texturesInUse; 
 };

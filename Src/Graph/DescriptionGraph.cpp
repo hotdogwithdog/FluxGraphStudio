@@ -23,7 +23,7 @@ void DescriptionGraph::ConnectNodes(DescriptionNodeInstanceHandle origin, int or
     Graph::EImageFormat originFormat = Graph::EImageFormat::None;
     if (originIndex < originNodeInfo->outputs.size() && originIndex >= 0)
     {
-        originFormat = originNodeInfo->outputs[originIndex].format;
+        originFormat = originNodeInfo->outputs[originIndex].textureDesc.format;
     }
 
     DescriptionNodeInstance* destinationDescriptionNodeInstance = NodesResourceManager::GetDescriptionNodeInstance(destination);
@@ -33,7 +33,7 @@ void DescriptionGraph::ConnectNodes(DescriptionNodeInstanceHandle origin, int or
     Graph::EImageFormat destinationFormat = Graph::EImageFormat::None;
     if (destinationIndex < destinationNodeInfo->inputs.size() && destinationIndex >= 0)
     {
-        destinationFormat = destinationNodeInfo->inputs[destinationIndex].format;
+        destinationFormat = destinationNodeInfo->inputs[destinationIndex].textureDesc.format;
     }
 
     if (originFormat == Graph::EImageFormat::None || destinationFormat == Graph::EImageFormat::None
@@ -72,12 +72,34 @@ void DescriptionGraph::MarkNodeAsStart(DescriptionNodeInstanceHandle nodeToMark,
     connectionInfo.bIsStart = true;
     connectionInfo.destinationNodeInstance = nodeToMark;
     connectionInfo.destinationIndex = destinationIndexToMark;
-
+    
     _destinationConnections[nodeToMark].push_back(connectionInfo);
     _bIsDirty = true;
 }
 
-std::vector<DescriptionNodeInstanceHandle> DescriptionGraph::CompileGraph()
+void DescriptionGraph::MarkNodeAsEnd(DescriptionNodeInstanceHandle nodeToMark, int originIndexToMark)
+{
+    DescriptionNodeInstance* nodeToMarkInstance = NodesResourceManager::GetDescriptionNodeInstance(nodeToMark);
+    if (nodeToMarkInstance == nullptr) return;
+    RGNodeInfo* nodeToMarkInfo = AssetsManager::GetNodeInfo(nodeToMarkInstance->nodeInfoHandle);
+    if (nodeToMarkInfo == nullptr) return;
+
+    if (originIndexToMark >= nodeToMarkInfo->inputs.size() && originIndexToMark < 0)
+    {
+        Logger::Log(Logger::LogLevel::Error, std::format("DescriptionGraph::MarkNodeAsEnd: The origin index is invalid: {}", originIndexToMark));
+        return;
+    }
+
+    Graph::ConnectionInfo connectionInfo;
+    connectionInfo.bIsEnd = true;
+    connectionInfo.originNodeInstance = nodeToMark;
+    connectionInfo.originIndex = originIndexToMark;
+    
+    _originConnections[nodeToMark].push_back(connectionInfo);
+    _bIsDirty = true;
+}
+
+CompiledGraph DescriptionGraph::CompileGraph()
 {
     if (!_bIsDirty) // Must construct this class with the dirty flag on
     {
@@ -110,10 +132,11 @@ std::vector<DescriptionNodeInstanceHandle> DescriptionGraph::CompileGraph()
     {
         DescriptionNodeInstanceHandle currentNode = starterNodes.front();
         starterNodes.pop();
-        _compiledGraph.push_back(currentNode);
+        _compiledGraph.emplace_back(currentNode, _destinationConnections[currentNode],  _originConnections[currentNode]);
 
         for (const Graph::ConnectionInfo& connectionInfo : _originConnections[currentNode])
         {
+            if (connectionInfo.destinationNodeInstance == 0) continue; // This happens on the nodes set to end
             if (!connectionInfo.bIsEnd) numberOfInputConnections[connectionInfo.destinationNodeInstance]--;
             if (numberOfInputConnections[connectionInfo.destinationNodeInstance] == 0 &&
                 !visitedNodes.contains(connectionInfo.destinationNodeInstance))

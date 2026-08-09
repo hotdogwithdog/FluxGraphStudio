@@ -16,7 +16,7 @@ void main()
 
     if(pixelCoord.x < UB.outputImage_Size.x && pixelCoord.y < UB.outputImage_Size.y)
     {
-        vec2 UV = vec2(pixelCoord) / UB.outputImage_Size;
+        vec2 UV = GetUV(pixelCoord, UB.outputImage_Size);
 
         vec3 color = texture(inputTex, UV).xyz;
         color = mix(color, vec3(1.0, 0.0, 0.0), 0.2);

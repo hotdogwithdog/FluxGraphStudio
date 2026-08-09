@@ -156,7 +156,8 @@ void ParseInput(NodeParser::NodeParserResult& result, std::string& line, std::st
     
     Graph::ShaderParameter shaderParameter;
     shaderParameter.name = name;
-    shaderParameter.format = eFormat;
+    shaderParameter.textureDesc.format = eFormat;
+    shaderParameter.textureDesc.sizeMode = Graph::TextureDesc::ESizeMode::Input;
     shaderParameter.type = Graph::EShaderParameterType::Image;
     
     result.nodeInfo.inputs.push_back(shaderParameter);
@@ -184,7 +185,9 @@ void ParseOutput(NodeParser::NodeParserResult& result, std::string& line, std::s
 
     Graph::ShaderParameter shaderParameter;
     shaderParameter.name = name;
-    shaderParameter.format = eFormat;
+    shaderParameter.textureDesc.format = eFormat;
+    shaderParameter.textureDesc.sizeMode = Graph::TextureDesc::ESizeMode::Input; // TODO: Logic for SizeMode
+    shaderParameter.textureDesc.inputIndex = 0;
     shaderParameter.type = Graph::EShaderParameterType::Image;
     
     result.nodeInfo.outputs.push_back(shaderParameter);
@@ -203,7 +206,7 @@ void ParseUniform(NodeParser::NodeParserResult& result, std::string& line, std::
     std::string name = StringUtils::Trim(line.substr(spacePos + 1, line.length() - spacePos + 1));
 
     Graph::EImageFormat format = Graph::CastStringToImageFormat(type);
-    Graph::EShaderParameterType eType = format == Graph::EImageFormat::None ? Graph::CastStringToShaderParameterType(type) : Graph::EShaderParameterType::Image;
+    Graph::EShaderParameterType eType = (format == Graph::EImageFormat::None ? Graph::CastStringToShaderParameterType(type) : Graph::EShaderParameterType::Image);
     if (eType == Graph::EShaderParameterType::None)
     {
         result.errorMessage += std::format("Parse error on file [{}]: Unknown Type: [{}]", totalPath, type);
@@ -213,7 +216,10 @@ void ParseUniform(NodeParser::NodeParserResult& result, std::string& line, std::
 
     Graph::ShaderParameter shaderParameter;
     shaderParameter.name = name;
-    shaderParameter.format = format;
+    shaderParameter.textureDesc.format = format;
+    shaderParameter.textureDesc.sizeMode = Graph::TextureDesc::ESizeMode::Fixed;
+    shaderParameter.textureDesc.width = 512; // TODO: Do logic for size from editor and fixed size on the gNode file
+    shaderParameter.textureDesc.height = 512;
     shaderParameter.type = eType;
     
     result.nodeInfo.uniforms.push_back(shaderParameter);

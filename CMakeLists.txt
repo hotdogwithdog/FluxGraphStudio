@@ -36,6 +36,7 @@ file(GLOB_RECURSE FGS_SHADERS CONFIGURE_DEPENDS
     ${CMAKE_SOURCE_DIR}/Assets/Shaders/*.frag
     ${CMAKE_SOURCE_DIR}/Assets/Shaders/*.vert
     ${CMAKE_SOURCE_DIR}/Assets/Shaders/*.glsl
+    ${CMAKE_SOURCE_DIR}/Assets/Nodes/*.gNode
 )
 
 add_executable(FGS ${FGS_SRC} ${FGS_SHADERS})
@@ -55,7 +56,7 @@ target_link_libraries(FGS PRIVATE
 	glslang::glslang-default-resource-limits
 	SPIRV
 	SPIRV-Tools-opt
-	SPIRV-Tools	
+	SPIRV-Tools
 
 
 	SDL3::SDL3
@@ -65,5 +66,3 @@ target_link_libraries(FGS PRIVATE
 	stb
 	vma
 )
-
-

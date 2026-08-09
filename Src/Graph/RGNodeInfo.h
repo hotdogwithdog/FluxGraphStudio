@@ -8,6 +8,7 @@
 #include "Assets/AssetsManager.h"
 #include "Utils/AssetsUtils.h"
 #include "GPU/VulkanDescriptors.h"
+#include "ShaderCompiler/ShaderCompiler.h"
 
 namespace Graph
 {
@@ -46,10 +47,53 @@ namespace Graph
     std::string CastImageFormatToGlslFormatString(const EImageFormat& format);
     std::string CastImageFormatToString(const EImageFormat& format);
 
+    struct TextureDesc
+    {
+        EImageFormat format;
+
+        enum class ESizeMode
+        {
+            None = 0,
+            Input,
+            Fixed
+        };
+
+        ESizeMode sizeMode;
+
+        uint32_t inputIndex; // This is only used if the Texture is an Output and is set to Input
+        
+        uint32_t width;
+        uint32_t height;
+
+        TextureDesc()
+        {
+            format = EImageFormat::None;
+            sizeMode = ESizeMode::None;
+            width = 0;
+            height = 0;
+            inputIndex = -1;
+        }
+
+        TextureDesc(Graph::EImageFormat format, uint32_t width, uint32_t height, ESizeMode sizeMode, uint32_t inputIndex)
+        {
+            this->format = format;
+            this->width = width;
+            this->height = height;
+            this->sizeMode = sizeMode;
+            this->inputIndex = inputIndex;
+        }
+
+        // This is used for custom key on std::unordered_map this will just skip the inputIndex but the rest must be equeal 
+        bool operator==(const TextureDesc& other) const
+        {
+            return format == other.format && width == other.width && height == other.height && sizeMode == other.sizeMode;
+        }
+    };
+
     struct ShaderParameter
     {
         EShaderParameterType type;
-        EImageFormat format;
+        TextureDesc textureDesc;
         std::string name;
     };
 
@@ -119,6 +163,18 @@ namespace Graph
         }
     };
 }
+
+template<>
+   struct std::hash<Graph::TextureDesc>
+{
+    std::size_t operator()(const Graph::TextureDesc& desc) const
+    {
+        return std::hash<Graph::EImageFormat>()(desc.format)
+            ^ (std::hash<uint32_t>()(desc.width) << 1)
+            ^ (std::hash<Graph::TextureDesc::ESizeMode>()(desc.sizeMode) << 2)
+            ^ (std::hash<uint32_t>()(desc.height) << 3);
+    }
+};
 
 // The Parameters will be uploaded on a big Uniform buffer but the images (input, output, uniforms)
 // will be uploaded in a different set, also the size of the images will be uploaded on a different uniform buffer
